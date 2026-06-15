@@ -1,0 +1,21 @@
+{
+  "name": "Fut-TV",
+  "short_name": "Fut-TV",
+  "description": "Jogos da Copa do Mundo 2026",
+  "theme_color": "#0F766E",
+  "background_color": "#F5F7F6",
+  "display": "standalone",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/soccer-icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/soccer-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
