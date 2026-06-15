@@ -21,8 +21,8 @@ import MatchDetailsHero
 import BroadcastList
   from "../../components/BroadcastList/BroadcastList";
 
-import TimelineCard
-  from "../../components/TimelineCard/TimelineCard";
+import TimeLineCard
+  from "../../components/TimeLineCard/TimeLineCard";
 
 import LineupsCard
   from "../../components/LineupsCard/LineupsCard";
@@ -120,7 +120,7 @@ export default function MatchDetails() {
 
         <>
 
-          <TimelineCard
+          <TimeLineCard
             events={
               data.timeline
             }
