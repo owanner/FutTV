@@ -67,7 +67,7 @@ export default function TopBar() {
               letterSpacing: -0.5
             }}
           >
-            FutTV
+            FuteTV
           </Typography>
         </Box>
       </Toolbar>
