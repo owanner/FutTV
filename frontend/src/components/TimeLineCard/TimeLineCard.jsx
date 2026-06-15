@@ -7,7 +7,7 @@ import {
   Divider,
 } from "@mui/material";
 
-export default function TimelineCard({ events }) {
+export default function TimeLineCard({ events }) {
 
   // Segurança total
 
