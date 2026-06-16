@@ -12,14 +12,13 @@ export default function CompetitionBar({
   return (
     <Box
       sx={{
-            height: {
-      xs: 32,
-      md: 42
-    },
-
+        height: {
+          xs: 32,
+          md: 42
+        },
         background:
           "linear-gradient(90deg,#3558A8 0%, #C94848 50%, #2F8A54 100%)",
-
+        position: "fixed",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
