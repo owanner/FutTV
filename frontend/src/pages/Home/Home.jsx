@@ -261,7 +261,7 @@ export default function Home() {
                   md: 1
                 }}
                 sx={{
-                  width: "max-content",
+                  width: "fit-content",
                   pl: 2,
                   pr: 2
                 }}

@@ -6,13 +6,13 @@ import {
 } from "@mui/material";
 
 import TopBar
-from "../components/TopBar/TopBar";
+  from "../components/TopBar/TopBar";
 
 import CompetitionBar
-from "../components/CompetitionBar/CompetitionBar";
+  from "../components/CompetitionBar/CompetitionBar";
 
 import BottomNav
-from "../components/BottomNav/BottomNav";
+  from "../components/BottomNav/BottomNav";
 
 export default function MainLayout({
 
@@ -27,13 +27,14 @@ export default function MainLayout({
       sx={{
 
         height: "100vh",
-background:
-  "linear-gradient(135deg, #F8FAFC 0%, #EEF2F7 100%)",
+        background:
+          "linear-gradient(135deg, #F8FAFC 0%, #EEF2F7 100%)",
         display: "flex",
 
         flexDirection: "column",
 
-        overflow: "hidden"
+        overflow: "hidden",
+        overflowX: "hidden"
 
       }}
 
