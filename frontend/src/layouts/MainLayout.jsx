@@ -34,11 +34,13 @@ export default function MainLayout({
         flexDirection: "column",
 
         overflow: "hidden",
-        overflowX: "hidden"
+        overflowX: "hidden",
+        overflowY: "hidden"
 
       }}
 
     >
+
 
       <TopBar />
 
@@ -52,7 +54,7 @@ export default function MainLayout({
 
           flex: 1,
 
-          overflowY: "auto",
+          overflowY: "hidden",
 
           pb: "40px"
 

@@ -15,7 +15,7 @@ export default function TopBar() {
 
   return (
     <AppBar
-      position="fixed"
+      position="static"
       elevation={0}
       sx={{
         background:
@@ -27,6 +27,7 @@ export default function TopBar() {
     >
       <Toolbar
         sx={{
+          
           minHeight: {
             xs: 52,
             md: 62
