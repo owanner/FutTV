@@ -217,17 +217,9 @@ export default function Home() {
             <Box
               sx={{
                 width: "100%",
-
-                display: {
-                  xs: "block",
-                  md: "flex"
-                },
-
-                overflowX: {
-                  xs: "visible",
-                  md: "auto"
-                },
-
+                maxWidth:"100dvh",
+                display: "block",
+                overflowX: "auto",
                 overflowY: "hidden",
 
                 pb: {
@@ -241,7 +233,8 @@ export default function Home() {
                 scrollSnapType: "x proximity",
                 scrollbarWidth: "none",
                 "&::-webkit-scrollbar": {
-                  height: 4
+                  height: 4,
+                  display: "none"
                 },
 
                 "&::-webkit-scrollbar-track": {
@@ -261,9 +254,9 @@ export default function Home() {
                   md: 1
                 }}
                 sx={{
-                  width: "fit-content",
-                  pl: 2,
-                  pr: 2
+                  width: "max-content",
+                  pl: 1,
+                  pr: 1
                 }}
               >
                 {carouselMatches.map((match) => (

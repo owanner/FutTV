@@ -12,12 +12,19 @@ export default function CompetitionBar({
   return (
     <Box
       sx={{
+            position: "sticky",
+    top: {
+      xs: 52,
+      md: 62
+    },
+
+    zIndex: 1299,
         height: {
           xs: 32,
           md: 42
         },
         background:
-          "linear-gradient(90deg,#3558A8 0%, #C94848 50%, #2F8A54 100%)",
+          "linear-gradient(90deg,#3558A8 0%, #C94848 50%, #010201 100%)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

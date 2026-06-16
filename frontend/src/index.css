@@ -55,11 +55,24 @@ body,
 #root {
   height: 100%;
   margin: 0;
-  overflow-x: hidden;
 }
 
 body {
   overflow: hidden; 
+}
+
+body {
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
+}
+
+
+html {
+  background: #111827;
+}
+
+body {
+  background: #111827;
 }
 
 #root {

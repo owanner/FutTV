@@ -1,8 +1,6 @@
 import {
-
   Box,
   Container
-
 } from "@mui/material";
 
 import TopBar
@@ -15,77 +13,57 @@ import BottomNav
   from "../components/BottomNav/BottomNav";
 
 export default function MainLayout({
-
   children
-
 }) {
-
   return (
+<Box
+  sx={{
+    minHeight: "100dvh",
+    display: "flex",
+    flexDirection: "column",
+    overflowX: "clip",
+    background:
+      "linear-gradient(135deg, #F8FAFC 0%, #EEF2F7 100%)"
+  }}
+>
+<Box
+  sx={{
+    position: "sticky",
+    top: 0,
+    zIndex: 1200
+  }}
+>
+        <TopBar />
+        <CompetitionBar />
 
-    <Box
+        </Box>
 
-      sx={{
-
-        height: "100vh",
-        background:
-          "linear-gradient(135deg, #F8FAFC 0%, #EEF2F7 100%)",
-        display: "flex",
-
-        flexDirection: "column",
-
-        overflow: "hidden",
-        overflowX: "hidden",
-        overflowY: "hidden"
-
-      }}
-
-    >
-
-
-      <TopBar />
-
-      <CompetitionBar />
-
+      {/* Conteúdo */}
       <Box
-
         component="main"
-
         sx={{
-
           flex: 1,
 
-          overflowY: "hidden",
+          overflowX: "hidden",
 
-          pb: "40px"
-
+          pb: {
+            xs: "72px",
+            md: 3
+          }
         }}
-
       >
-
         <Container
-
           maxWidth="lg"
-
           sx={{
-
-            pt: 2,
-
+            pt: 1.5,
             pb: 3
-
           }}
-
         >
-
           {children}
-
         </Container>
-
       </Box>
 
       <BottomNav />
-
     </Box>
-
   );
-
 }

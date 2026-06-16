@@ -14,10 +14,11 @@ export default function TopBar() {
   const navigate = useNavigate();
 
   return (
-    <AppBar
-      position="static"
-      elevation={0}
-      sx={{
+ <AppBar
+  position="sticky"
+  sx={{
+    top: 0,
+    zIndex: 1300,
         background:
           "linear-gradient(135deg, #111827 0%, #1F2937 100%)",
         borderBottom:
