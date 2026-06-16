@@ -91,7 +91,9 @@ function Team({ flag, name, onClick }) {
       sx={{
         width: "100%",
         flex: 1,
-        maxWidth: 110,
+        width: 90,
+minWidth: 90,
+maxWidth: 90,
 
         display: "flex",
         justifyContent: "center",
@@ -271,7 +273,7 @@ export default function MatchCard({
   return (
     <Card
       sx={{
-        width: 320,
+        width: "100%",
         maxWidth: 320,
         height: 260,
         mx: "auto",
@@ -394,7 +396,7 @@ export default function MatchCard({
                 alignItems="center"
                 spacing={0.5}
                 sx={{
-                  width: 100,
+                  width: 70,
                   flexShrink: 0
                 }}
               >

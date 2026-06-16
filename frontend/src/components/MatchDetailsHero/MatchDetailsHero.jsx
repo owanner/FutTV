@@ -218,7 +218,7 @@ export default function MatchDetailsHero({ match }) {
                   : match.status === 0
                     ? "#E2E8F0"
                     : "#dcf3d9)",
-              color: "#4b514a"
+              color: "#E2E8F0"
             }}
           />
         </Stack>

@@ -200,12 +200,15 @@ export default function MatchHero({ match }) {
               />
             </Stack>
             <Typography
-              variant="h5"
-              sx={{
-                mt: 1.5,
-                fontWeight: 800
-              }}
-            >
+  sx={{
+    mt: 1.5,
+    fontWeight: 800,
+    fontSize: {
+      xs: "1rem",
+      md: "1.2rem"
+    }
+  }}
+>
               {match.groupName}
             </Typography>
 

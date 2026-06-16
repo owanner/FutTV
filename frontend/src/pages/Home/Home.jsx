@@ -115,8 +115,8 @@ export default function Home() {
     >
       <Stack
         spacing={{
-          xs: 2,
-          md: 2.5
+          xs: 0.5,
+          md: 1
         }}
         alignItems="center"
         sx={{
@@ -166,7 +166,17 @@ export default function Home() {
                 Agenda
               </Typography>
 
-              <Typography variant="h5">
+              <Typography
+                sx={{
+                  fontSize: {
+                    xs: "1.1rem",
+                    sm: "1.3rem",
+                    md: "1.5rem"
+                  },
+                  fontWeight: 700,
+                  lineHeight: 1.1
+                }}
+              >
                 Próximas partidas
               </Typography>
 
@@ -186,9 +196,14 @@ export default function Home() {
               }}
             >
               <Typography
-                variant="h6"
                 sx={{
-                  mb: 0.5
+                  fontSize: {
+                    xs: "1.1rem",
+                    sm: "1.3rem",
+                    md: "1.5rem"
+                  },
+                  fontWeight: 700,
+                  lineHeight: 1.1
                 }}
               >
                 Nenhuma próxima partida
@@ -223,7 +238,7 @@ export default function Home() {
                 flex: 1,
                 mx: 0,
                 px: 0,
-                scrollSnapType: "x mandatory",
+                scrollSnapType: "x proximity",
                 scrollbarWidth: "none",
                 "&::-webkit-scrollbar": {
                   height: 4
@@ -241,7 +256,10 @@ export default function Home() {
             >
               <Stack
                 direction="row"
-                spacing={3}
+                spacing={{
+                  xs: 1.5,
+                  md: 1
+                }}
                 sx={{
                   width: "max-content",
                   pl: 2,
@@ -253,8 +271,8 @@ export default function Home() {
                     key={match.id}
                     sx={{
                       width: {
-                        xs: 320,
-                        sm: 320,
+                        xs: 260,
+                        sm: 290,
                         md: 320
                       },
                       flexShrink: 0,

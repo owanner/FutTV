@@ -28,8 +28,8 @@ export default function TopBar() {
       <Toolbar
         sx={{
           minHeight: {
-            xs: 64,
-            md: 72
+            xs: 52,
+            md: 62
           }
         }}
       >
@@ -51,7 +51,7 @@ export default function TopBar() {
           <SportsSoccerIcon
             sx={{
               fontSize: {
-                xs: 30,
+                xs: 22,
                 md: 36
               }
             }}
@@ -60,7 +60,7 @@ export default function TopBar() {
           <Typography
             sx={{
               fontSize: {
-                xs: "1.8rem",
+                xs: "1.1rem",
                 md: "2.1rem"
               },
               fontWeight: 800,

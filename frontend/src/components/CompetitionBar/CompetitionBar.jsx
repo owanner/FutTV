@@ -13,8 +13,8 @@ export default function CompetitionBar({
     <Box
       sx={{
             height: {
-      xs: 56,
-      md: 64
+      xs: 32,
+      md: 42
     },
 
         background:
