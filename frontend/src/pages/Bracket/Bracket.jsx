@@ -30,13 +30,21 @@ export default function Bracket() {
 
             <EmojiEventsIcon
               sx={{
-                fontSize: 64
+                fontSize: 56
               }}
             />
 
             <Typography
-              variant="h4"
-            >
+                sx={{
+                  fontSize: {
+                    xs: "1.5rem",
+                    sm: "1.7rem",
+                    md: "1.9rem"
+                  },
+                  fontWeight: 700,
+                  lineHeight: 1.1
+                }}
+              >
               Chaveamento
             </Typography>
 
@@ -68,8 +76,15 @@ export default function Bracket() {
         <CardContent>
 
           <Typography
-            variant="h6"
-            gutterBottom
+            sx={{
+                  fontSize: {
+                    xs: "1.0rem",
+                    sm: "1.1rem",
+                    md: "1.3rem"
+                  },
+                  fontWeight: 700,
+                  lineHeight: 1.1
+                }}
           >
             O que estará disponível
           </Typography>
