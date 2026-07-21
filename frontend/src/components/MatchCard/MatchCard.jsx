@@ -10,76 +10,16 @@ import {
 
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import LiveTvOutlinedIcon from "@mui/icons-material/LiveTvOutlined";
-import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
 
 import { sortBroadcasts } from "../../utils/broadcasts";
+import { getStatus } from "../../utils/statusUtils";
+import { abbreviateTeamName } from "../../utils/teamUtils";
 
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 
-const statusMap = {
-  3: {
-    label: "AO VIVO",
-    color: "#DC2626",
-    background: "#FEE2E2"
-  },
-  0: {
-    label: "ENCERRADO",
-    color: "#475569",
-    background: "#E2E8F0"
-  },
-  1: {
-    label: "PRÓXIMO",
-    color: "#006A67",
-    background: "#D9F3EF"
-  }
-};
-
-function getStatus(status) {
-  return (
-    statusMap[status] || {
-      label: "PARTIDA",
-      color: "#006A67",
-      background: "#D9F3EF"
-    }
-  );
-}
-
 function Team({ flag, name, onClick }) {
-  function capitalizeWord(word) {
-    if (!word) return "";
-    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-  }
-
-  function abbreviateTeamName(fullName) {
-    if (!fullName) return "A definir";
-
-    const smallWords = [
-      "do",
-      "da",
-      "dos",
-      "das",
-      "de",
-      "e",
-      "the",
-      "of",
-      "and"
-    ];
-
-    const parts = fullName.trim().split(/\s+/).filter(Boolean);
-    if (parts.length <= 1) return parts.map(capitalizeWord).join(" ");
-
-    const first = parts[0];
-    const rest = parts.slice(1).map((w) => {
-      const lw = w.toLowerCase();
-      if (smallWords.includes(lw)) return lw;
-      return capitalizeWord(w);
-    });
-
-    return `${first.charAt(0).toUpperCase()}. ${rest.join(" ")}`;
-  }
-
   const displayName = abbreviateTeamName(name);
 
   const hasFlag = Boolean(flag);
@@ -89,11 +29,9 @@ function Team({ flag, name, onClick }) {
       alignItems="center"
       spacing={0.75}
       sx={{
-        width: "100%",
-        flex: 1,
         width: 90,
-minWidth: 90,
-maxWidth: 90,
+        minWidth: 90,
+        maxWidth: 90,
 
         display: "flex",
         justifyContent: "center",
@@ -249,8 +187,7 @@ function MetaItem({ icon, logo, children }) {
 }
 
 export default function MatchCard({
-  match,
-  compact = false
+  match
 }) {
   const navigate = useNavigate();
   const status = getStatus(match.status);

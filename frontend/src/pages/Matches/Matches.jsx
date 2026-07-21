@@ -1,12 +1,10 @@
 import {
 
-  Typography,
-
   CircularProgress,
 
-  Grid,
+  Alert,
 
-  Alert
+  Box
 
 } from "@mui/material";
 
@@ -26,6 +24,8 @@ from "../../components/MatchCard/MatchCard";
 
 import MatchesFilters
 from "../../components/MatchesFilters/MatchesFilters";
+
+import { normalizeText } from "../../utils/formatUtils";
 
 export default function Matches() {
 
@@ -54,16 +54,6 @@ export default function Matches() {
     setStatus
 
   ] = useState("");
-
-  function normalizeText(text) {
-    if (!text) return "";
-    return text
-      .toString()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/\u0300-\u036f/g, "")
-      .replace(/[\u0300-\u036f]/g, "");
-  }
 
   const filteredMatches =
     useMemo(() => {
@@ -170,17 +160,6 @@ export default function Matches() {
 
     <>
 
-      {/*<Typography
-
-        variant="h4"
-
-        gutterBottom
-      >
-
-        Jogos
-
-      </Typography>*/}
-
       <MatchesFilters
 
         search={search}
@@ -192,49 +171,25 @@ export default function Matches() {
         setStatus={setStatus}
       />
 
-      <Grid
-        container
-        spacing={2}
-        justifyContent="center"
+      <Box
         sx={{
-          maxWidth: 1400,
-          mx: "auto",
-          justifyContent: "center"
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
+          gap: { xs: 2, md: 1.5 }
         }}
       >
-
-        {
-
-          filteredMatches.map(
-
-            match => (
-
-              <Grid
-
-                item
-
-                xs={12}
-
-                sm={6}
-
-                md={4}
-
-                lg={4}
-
-                key={match.id}
-              >
-
-                <MatchCard
-
-                  match={match}
-                />
-
-              </Grid>
-            )
-          )
-        }
-
-      </Grid>
+        {filteredMatches.map(match => (
+          <Box
+            key={match.id}
+            sx={{
+              width: { xs: "100%", sm: "calc(50% - 8px)", md: "calc(25% - 12px)" }
+            }}
+          >
+            <MatchCard match={match} />
+          </Box>
+        ))}
+      </Box>
 
     </>
   );

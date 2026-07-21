@@ -4,7 +4,6 @@ import {
   Typography,
   Stack,
   Chip,
-  Divider,
 } from "@mui/material";
 
 export default function TimeLineCard({ events }) {

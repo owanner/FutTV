@@ -1,173 +1,105 @@
 /**
- * ==========================================================
- * FUT-TV API
- * ==========================================================
+ * Fut-TV API — Main entry point.
  *
- * Ponto de entrada principal.
- *
- * ==========================================================
+ * Sets up Express, registers routes, starts cron jobs,
+ * and handles graceful shutdown.
  */
 
 require("dotenv").config();
 
-const express =
-  require("express");
+const express = require("express");
+const cors = require("cors");
+const cron = require("node-cron");
 
-const cors =
-  require("cors");
+// Database
+const prisma = require("./database/prisma");
 
-/**
- * ==========================================================
- * ROTAS
- * ==========================================================
- */
-const syncStandings =
-  require("./cron/syncStandings");
+// Cron jobs
+const syncMatches = require("./cron/syncMatches");
+const syncStandings = require("./cron/syncStandings");
 
-const matchesRoutes =
-  require("./routes/matches");
+// Routes
+const matchesRoutes = require("./routes/matches");
+const standingsRoutes = require("./routes/standings");
+const bracketRoutes = require("./routes/bracket");
+const searchRoutes = require("./routes/search");
+const teamsRoutes = require("./routes/teams");
+const homeRoutes = require("./routes/home");
+const groupRoutes = require("./routes/group");
 
-const standingsRoutes =
-  require("./routes/standings");
-
-const bracketRoutes =
-  require("./routes/bracket");
-
-const dashboardRoutes =
-  require("./routes/dashboard");
-
-const searchRoutes =
-  require("./routes/search");
-
-const teamsRoutes =
-  require("./routes/teams");
-
-const homeRoutes =
-  require("./routes/home");
-
-const groupRoutes =
-  require("./routes/group");
-
-const teamRoutes =
-  require("./routes/team");
-
-/**
- * ==========================================================
- * CRONS
- * ==========================================================
- */
-
-const syncMatches =
-  require("./cron/syncMatches");
-
-/**
- * ==========================================================
- * APP
- * ==========================================================
- */
-
-const app =
-  express();
+const app = express();
 
 app.use(cors());
-
 app.use(express.json());
 
 /**
- * ==========================================================
- * EXECUTA SINCRONIZAÇÃO
- * AO INICIAR O SERVIDOR
- * ==========================================================
+ * Run initial syncs on server start.
+ * Errors are caught inside the sync functions.
  */
-
 syncMatches();
-
 syncStandings();
 
 /**
- * ==========================================================
- * HEALTH CHECK
- * ==========================================================
+ * Schedule recurring syncs.
+ * - Matches: every 5 minutes (was incorrectly set to every minute with duplicates)
+ * - Standings: every 15 minutes
  */
-app.get(
-  "/",
-  (req, res) => {
-
-    res.json({
-
-      app: "Fut-TV",
-
-      status: "online"
-    });
-  }
-);
+cron.schedule("*/5 * * * *", syncMatches);
+cron.schedule("*/15 * * * *", syncStandings);
 
 /**
- * ==========================================================
- * ROTAS API
- * ==========================================================
+ * Health check endpoint.
  */
-
-app.use(
-  "/matches",
-  matchesRoutes
-);
-
-app.use(
-  "/standings",
-  standingsRoutes
-);
-
-app.use(
-  "/bracket",
-  bracketRoutes
-);
-
-app.use(
-  "/dashboard",
-  dashboardRoutes
-);
-
-app.use(
-  "/search",
-  searchRoutes
-);
-
-app.use(
-  "/teams",
-  teamsRoutes
-);
-
-app.use(
-  "/home",
-  homeRoutes
-);
-
-app.use(
-  "/group",
-  groupRoutes
-);
-
-app.use(
-  "/team",
-  teamRoutes
-);
+app.get("/", (req, res) => {
+  res.json({ app: "Fut-TV", status: "online" });
+});
 
 /**
- * ==========================================================
- * START
- * ==========================================================
+ * API routes.
  */
+app.use("/home", homeRoutes);
+app.use("/matches", matchesRoutes);
+app.use("/standings", standingsRoutes);
+app.use("/bracket", bracketRoutes);
+app.use("/search", searchRoutes);
+app.use("/teams", teamsRoutes);
+app.use("/group", groupRoutes);
 
-const PORT =
-  process.env.PORT || 3000;
+/**
+ * 404 handler for unmatched routes.
+ */
+app.use((req, res) => {
+  res.status(404).json({ error: "Rota não encontrada" });
+});
 
-app.listen(
-  PORT,
-  () => {
+/**
+ * Global error handler.
+ */
+app.use((err, req, res, next) => {
+  console.error("❌ Erro não tratado:", err.message);
+  res.status(500).json({ error: "Erro interno do servidor" });
+});
 
-    console.log(
-      `🚀 Fut-TV API iniciada na porta ${PORT}`
-    );
-  }
-);
+/**
+ * Start server.
+ */
+const PORT = process.env.PORT || 3000;
+
+const server = app.listen(PORT, () => {
+  console.log(`🚀 Fut-TV API iniciada na porta ${PORT}`);
+});
+
+/**
+ * Graceful shutdown: close Prisma connection on SIGTERM/SIGINT.
+ */
+async function shutdown(signal) {
+  console.log(`\n${signal} recebido. Encerrando...`);
+  server.close(async () => {
+    await prisma.$disconnect();
+    console.log("✅ Servidor encerrado");
+    process.exit(0);
+  });
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

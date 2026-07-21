@@ -222,10 +222,6 @@ export default function Home() {
                 overflowX: "auto",
                 overflowY: "hidden",
 
-                pb: {
-                  xs: 0,
-                  md: 1
-                },
                 pb: 0,
                 flex: 1,
                 mx: 0,

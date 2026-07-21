@@ -1,129 +1,38 @@
-const express =
-  require("express");
-
-const router =
-  express.Router();
-
-const prisma =
-  require("../database/prisma");
-
 /**
- * ==========================================================
- * FORMATA TIME
- * ==========================================================
+ * Group detail route.
+ *
+ * GET /group/:letter — returns standings and matches for a specific group
  */
-function formatStanding(team) {
 
-  return {
+const express = require("express");
+const router = express.Router();
+const prisma = require("../database/prisma");
+const formatStanding = require("../utils/formatStanding");
 
-    ...team,
+router.get("/:letter", async (req, res) => {
+  try {
+    const letter = req.params.letter.toUpperCase();
+    const groupName = `Grupo ${letter}`;
 
-    flag:
-      team.teamCode
-        ? `https://api.fifa.com/api/v3/picture/flags-sq-4/${team.teamCode}`
-        : null
+    const standings = await prisma.standing.findMany({
+      where: { groupName },
+      orderBy: { position: "asc" }
+    });
 
-  };
+    const matches = await prisma.match.findMany({
+      where: { groupName },
+      orderBy: { date: "asc" }
+    });
 
-}
-
-router.get(
-
-  "/:letter",
-
-  async (
-
-    req,
-    res
-
-  ) => {
-
-    try {
-
-      const letter =
-
-        req.params
-          .letter
-          .toUpperCase();
-
-      const groupName =
-        `Grupo ${letter}`;
-
-      const standings =
-
-        await prisma.standing.findMany({
-
-          where: {
-
-            groupName
-
-          },
-
-          orderBy: {
-
-            position: "asc"
-
-          }
-
-        });
-
-      const formattedStandings =
-
-        standings.map(
-          formatStanding
-        );
-
-      const matches =
-
-        await prisma.match.findMany({
-
-          where: {
-
-            groupName
-
-          },
-
-          orderBy: {
-
-            date: "asc"
-
-          }
-
-        });
-
-      res.json({
-
-        groupName,
-
-        standings:
-          formattedStandings,
-
-        matches
-
-      });
-
-    } catch (
-
-      error
-
-    ) {
-
-      console.error(
-        error
-      );
-
-      res.status(500).json({
-
-        error:
-          "Erro ao buscar grupo"
-
-      });
-
-    }
-
+    res.json({
+      groupName,
+      standings: standings.map(formatStanding),
+      matches
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao buscar grupo" });
   }
+});
 
-);
-
-module.exports =
-  router;
+module.exports = router;

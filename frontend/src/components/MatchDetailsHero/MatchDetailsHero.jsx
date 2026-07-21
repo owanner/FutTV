@@ -9,149 +9,24 @@ import {
 } from "@mui/material";
 
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
-import SportsScoreOutlinedIcon from '@mui/icons-material/SportsScoreOutlined';
+import SportsScoreOutlinedIcon from "@mui/icons-material/SportsScoreOutlined";
 
-
-import TeamBadge from "../TeamBadge/TeamBadge";
+import { getStatus, hasScore } from "../../utils/statusUtils";
+import { TeamBlock, TeamName, InfoItem } from "../MatchTeamDisplay/MatchTeamDisplay";
 
 export default function MatchDetailsHero({ match }) {
+  if (!match) return null;
 
-  if (!match) {
-    return null;
-  }
+  const status = getStatus(match.status);
+  const matchHasScore = hasScore(match.status);
 
-  const statusLabel =
-    match.status === 3
-      ? "AO VIVO"
-      : match.status === 0
-        ? "ENCERRADO"
-        : "PRÓXIMO";
-
-  const isLiveOrFinished = match.status === 3 || match.status === 0;
-
-  const scoreLabel = isLiveOrFinished &&
+  const scoreLabel = matchHasScore &&
     Number.isFinite(match.homeScore) &&
     Number.isFinite(match.awayScore)
     ? `${match.homeScore} x ${match.awayScore}`
     : "";
 
-  const centerLabel = isLiveOrFinished ? scoreLabel : "VS";
-
-  function InfoItem({ icon, logo, children }) {
-    return (
-      <Stack
-        direction="row"
-        spacing={1}
-        alignItems="center"
-        sx={{
-          minWidth: 0,
-          color: "rgba(255, 255, 255, 0.86)"
-        }}
-      >
-        {logo ? (
-          <Box
-            component="img"
-            src={logo}
-            alt=""
-            sx={{
-              width: 36,
-              height: 20,
-              objectFit: "contain",
-              flexShrink: 0
-            }}
-          />
-        ) : (
-          icon
-        )}
-
-        <Typography
-          variant="body2"
-          sx={{
-            overflowWrap: "anywhere"
-          }}
-        >
-          {children}
-        </Typography>
-      </Stack>
-    );
-  }
-
-  function TeamBlock({ flag, name }) {
-    return (
-      <Box
-        sx={{
-          width: "100%",
-          display: "flex",
-          justifyContent: "center"
-        }}
-      >
-        <Box
-          sx={{
-            width: {
-              xs: 48,
-              sm: 62
-            },
-            height: {
-              xs: 36,
-              sm: 46
-            },
-
-            mx: "auto",
-
-            display: "grid",
-            placeItems: "center",
-            flexShrink: 0,
-            borderRadius: 1.5,
-            backgroundColor: "rgba(255, 255, 255, 0.74)",
-            border: "1px solid rgba(255, 255, 255, 0.72)",
-            boxShadow: "0 10px 20px rgba(0, 74, 72, 0.12)"
-          }}
-        >
-          <Box
-            component="img"
-            src={flag}
-            alt={name || "Time"}
-            sx={{
-              width: "72%",
-              height: "72%",
-              objectFit: "contain"
-            }}
-          />
-        </Box>
-      </Box>
-    );
-  }
-
-  function TeamName({ name }) {
-    return (
-      <Typography
-        variant="h6"
-        sx={{
-          width: "100%",
-
-          textAlign: "center",
-
-          fontSize: {
-            xs: "0.90rem",
-            sm: "1.20rem"
-          },
-
-          lineHeight: 1.15,
-
-          overflowWrap: "anywhere",
-
-          maxWidth: {
-            xs: 72,
-            sm: 120
-          },
-
-          mx: "auto"
-        }}
-      >
-        {name || "A definir"}
-      </Typography>
-    );
-  }
+  const centerLabel = matchHasScore ? scoreLabel : "VS";
 
   return (
 
@@ -208,17 +83,12 @@ export default function MatchDetailsHero({ match }) {
             {match.groupName || "Fases Finais"}
           </Typography>
           <Chip
-            label={statusLabel}
+            label={status.label}
             size="small"
             sx={{
               fontWeight: 700,
-              bgcolor:
-                match.status === 3
-                  ? "#DC2626"
-                  : match.status === 0
-                    ? "#E2E8F0"
-                    : "#dcf3d9)",
-              color: "#E2E8F0"
+              bgcolor: status.background,
+              color: status.color
             }}
           />
         </Stack>

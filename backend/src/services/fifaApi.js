@@ -114,25 +114,6 @@ async function getAllMatches() {
 
 /**
  * ==========================================================
- * DETALHES DA PARTIDA
- * ==========================================================
- */
-async function getMatch(matchId) {
-
-  const response = await api.get(
-    `/calendar/${matchId}`,
-    {
-      params: {
-        language: "pt"
-      }
-    }
-  );
-
-  return response.data;
-}
-
-/**
- * ==========================================================
  * TRANSMISSÕES
  * ==========================================================
  */
@@ -227,7 +208,6 @@ module.exports = {
   getMatchesByStage,
   getAllMatches,
 
-  getMatch,
   getBroadcasts,
   getStandings,
   getTimeline,

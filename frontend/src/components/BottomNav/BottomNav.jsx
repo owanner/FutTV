@@ -8,7 +8,6 @@ import {
   Home,
   SportsSoccer,
   TableChart,
-  Groups as GroupsIcon,
   AccountTree
 } from "@mui/icons-material";
 
@@ -40,6 +39,8 @@ export default function BottomNav() {
         left: 0,
 
         right: 0,
+
+        pb: "env(safe-area-inset-bottom)",
 
         backdropFilter:
           "blur(12px)",

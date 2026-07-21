@@ -1,37 +1,14 @@
-import {
-  useQuery
-}
-from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import api from "../api/futtvApi";
 
-import api
-from "../api/futtvApi";
-
-export function useTeam(
-  code
-) {
-
+/** Fetches team detail including standing, matches, and qualification status. */
+export function useTeam(code) {
   return useQuery({
-
-    queryKey: [
-      "team",
-      code
-    ],
-
+    queryKey: ["team", code],
     queryFn: async () => {
-
-      const response =
-
-        await api.get(
-          `/team/${code}`
-        );
-
+      const response = await api.get(`/teams/${code}`);
       return response.data;
-
     },
-
-    enabled:
-      !!code
-
+    enabled: !!code
   });
-
 }

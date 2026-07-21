@@ -36,18 +36,19 @@ export default function TopBar() {
         }}
       >
         <Box
+          role="button"
+          tabIndex={0}
           onClick={() => navigate("/")}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/"); }}
           sx={{
             display: "flex",
             alignItems: "center",
             gap: 1.5,
-
             cursor: "pointer",
             userSelect: "none",
-
-            "&:hover": {
-              opacity: 0.9
-            }
+            outline: "none",
+            "&:hover": { opacity: 0.9 },
+            "&:focus-visible": { outline: "2px solid white", outlineOffset: 2, borderRadius: 1 }
           }}
         >
           <SportsSoccerIcon

@@ -189,17 +189,12 @@ export default function LineupsCard({
   awayFlag,
   live
 }) {
+  const theme = useTheme();
+  const compact = useMediaQuery(theme.breakpoints.down("md"));
 
   if (!live) {
     return null;
   }
-
-  const theme = useTheme();
-
-  const compact =
-    useMediaQuery(
-      theme.breakpoints.down("md")
-    );
 
   const homeTeam =
     live.HomeTeam;
@@ -317,15 +312,6 @@ export default function LineupsCard({
 </Typography>
           </Stack>
 
-          {/*<Typography
-            sx={{
-              fontSize: "1.6rem",
-              fontWeight: 900,
-              color: "primary.main"
-            }}
-          >
-            VS
-          </Typography>*/}
           <Typography
           sx={{
               fontSize: "1.0rem",
