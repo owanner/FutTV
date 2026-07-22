@@ -9,7 +9,7 @@ const STATUS_MAP = {
   1: { label: "PRÓXIMO", color: "#006A67", background: "#D9F3EF" }
 };
 
-const DEFAULT_STATUS = { label: "PARTIDA", color: "#006A67", background: "#D9F3EF" };
+const DEFAULT_STATUS = STATUS_MAP[1];
 
 /** Returns label, color, and background for a FIFA status code. */
 export function getStatus(status) {

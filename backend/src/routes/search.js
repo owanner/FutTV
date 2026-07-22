@@ -1,213 +1,68 @@
 /**
- * ==========================================================
- * SEARCH
- * ==========================================================
+ * Search route.
  *
- * GET /search?q=brasil
+ * GET /search?q=brasil&competitionId=wc2026
  *
- * Busca:
- *
- * - Times
- * - Partidas
- * - Grupos
- *
- * ==========================================================
+ * Searches teams, matches, and groups.
  */
 
-const express =
-  require("express");
+const express = require("express");
+const router = express.Router();
+const prisma = require("../database/prisma");
 
-const router =
-  express.Router();
+function competitionFilter(req) {
+  const competitionId = req.query.competitionId;
+  return competitionId ? { competitionId } : {};
+}
 
-const prisma =
-  require("../database/prisma");
+router.get("/", async (req, res) => {
+  try {
+    const query = req.query.q;
 
-/**
- * ==========================================================
- * SEARCH
- * ==========================================================
- */
-router.get(
-  "/",
-  async (req, res) => {
-
-    try {
-
-      const query =
-        req.query.q;
-
-      /**
-       * Não pesquisar vazio
-       */
-      if (
-        !query ||
-        query.trim() === ""
-      ) {
-
-        return res.json({
-
-          query,
-
-          teams: [],
-
-          matches: [],
-
-          groups: []
-        });
-      }
-
-      /**
-       * ======================================================
-       * TIMES
-       * ======================================================
-       *
-       * Busca na classificação
-       */
-      const teams =
-        await prisma.standing.findMany({
-
-          where: {
-
-            OR: [
-
-              {
-                teamName: {
-
-                  contains: query.trim()
-                }
-              },
-
-              {
-                teamCode: {
-
-                  contains:
-                    query.toUpperCase()
-                }
-              }
-            ]
-          },
-
-          orderBy: {
-
-            teamName:
-              "asc"
-          }
-        });
-
-      /**
-       * ======================================================
-       * PARTIDAS
-       * ======================================================
-       */
-      const matches =
-        await prisma.match.findMany({
-
-          where: {
-
-            OR: [
-
-              {
-                homeTeam: {
-
-                  contains:
-                    query.trim()
-                }
-              },
-
-              {
-                awayTeam: {
-
-                  contains:
-                    query.trim()
-                }
-              },
-
-              {
-                groupName: {
-
-                  contains:
-                    query.trim()
-                }
-              },
-
-              {
-                stageName: {
-
-                  contains:
-                    query.trim()
-                }
-              }
-            ]
-          },
-
-          include: {
-            broadcasts: true
-          },
-
-          orderBy: {
-            date: "asc"
-          }
-        });
-
-      /**
-       * ======================================================
-       * GRUPOS
-       * ======================================================
-       */
-      const groups =
-        await prisma.standing.findMany({
-
-          where: {
-
-            groupName: {
-
-              contains:
-                query.trim()
-            }
-          },
-
-          orderBy: [
-
-            {
-              groupName:
-                "asc"
-            },
-
-            {
-              position:
-                "asc"
-            }
-          ]
-        });
-
-      /**
-       * ======================================================
-       * RESPOSTA
-       * ======================================================
-       */
-      res.json({
-
-        query,
-
-        teams,
-
-        matches,
-
-        groups
-      });
-
-    } catch (error) {
-
-      console.error(error);
-
-      res.status(500).json({
-
-        error:
-          "Erro ao pesquisar"
-      });
+    if (!query || query.trim() === "") {
+      return res.json({ query, teams: [], matches: [], groups: [] });
     }
+
+    const compFilter = competitionFilter(req);
+
+    const teams = await prisma.standing.findMany({
+      where: {
+        OR: [
+          { teamName: { contains: query.trim() } },
+          { teamCode: { contains: query.toUpperCase() } }
+        ],
+        ...compFilter
+      },
+      orderBy: { teamName: "asc" }
+    });
+
+    const matches = await prisma.match.findMany({
+      where: {
+        OR: [
+          { homeTeam: { contains: query.trim() } },
+          { awayTeam: { contains: query.trim() } },
+          { groupName: { contains: query.trim() } },
+          { stageName: { contains: query.trim() } }
+        ],
+        ...compFilter
+      },
+      include: { broadcasts: true },
+      orderBy: { date: "asc" }
+    });
+
+    const groups = await prisma.standing.findMany({
+      where: {
+        groupName: { contains: query.trim() },
+        ...compFilter
+      },
+      orderBy: [{ groupName: "asc" }, { position: "asc" }]
+    });
+
+    res.json({ query, teams, matches, groups });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao pesquisar" });
   }
-);
+});
 
 module.exports = router;

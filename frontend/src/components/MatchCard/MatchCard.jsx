@@ -17,7 +17,7 @@ import { getStatus } from "../../utils/statusUtils";
 import { abbreviateTeamName } from "../../utils/teamUtils";
 
 import dayjs from "dayjs";
-import { useNavigate } from "react-router-dom";
+import useNav from "../../hooks/useNav";
 
 function Team({ flag, name, onClick }) {
   const displayName = abbreviateTeamName(name);
@@ -189,7 +189,7 @@ function MetaItem({ icon, logo, children }) {
 export default function MatchCard({
   match
 }) {
-  const navigate = useNavigate();
+  const navigate = useNav();
   const status = getStatus(match.status);
   const broadcasts =
     sortBroadcasts(
@@ -291,7 +291,7 @@ export default function MatchCard({
               sx={{
                 flexShrink: 0,
                 color: status.color,
-                backgroundColor: status.background
+                bgcolor: status.background
               }}
             />
           </Stack>

@@ -1,10 +1,9 @@
 import { Box, Typography, Button } from "@mui/material";
-import { useNavigate } from "react-router-dom";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
+import useNav from "../../hooks/useNav";
 
-/** 404 page shown when no route matches. */
 export default function NotFound() {
-  const navigate = useNavigate();
+  const navigate = useNav();
 
   return (
     <Box

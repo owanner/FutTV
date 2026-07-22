@@ -17,10 +17,12 @@ const prisma =
  * OBTÉM CLASSIFICAÇÃO ORGANIZADA
  * ==========================================================
  */
-async function getGroups() {
+async function getGroups(competitionId) {
 
   const standings =
     await prisma.standing.findMany({
+
+      where: competitionId ? { competitionId } : {},
 
       orderBy: [
         {
@@ -177,10 +179,10 @@ function generateRoundOf32(
  * BRACKET COMPLETO
  * ==========================================================
  */
-async function generateBracket() {
+async function generateBracket(competitionId) {
 
   const groups =
-    await getGroups();
+    await getGroups(competitionId);
 
   const bestThirds =
     getBestThirds(groups);

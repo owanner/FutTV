@@ -3,6 +3,8 @@
  *
  * GET /standings       — flat list of all standings
  * GET /standings/groups — standings grouped by group name
+ *
+ * Both accept ?competitionId= query param.
  */
 
 const express = require("express");
@@ -10,15 +12,17 @@ const router = express.Router();
 const prisma = require("../database/prisma");
 const formatStanding = require("../utils/formatStanding");
 
-/**
- * Returns all standings as a flat list with flag URLs.
- */
+function competitionFilter(req) {
+  const competitionId = req.query.competitionId;
+  return competitionId ? { competitionId } : {};
+}
+
 router.get("/", async (req, res) => {
   try {
     const standings = await prisma.standing.findMany({
+      where: competitionFilter(req),
       orderBy: [{ groupName: "asc" }, { position: "asc" }]
     });
-
     res.json(standings.map(formatStanding));
   } catch (error) {
     console.error(error);
@@ -26,12 +30,10 @@ router.get("/", async (req, res) => {
   }
 });
 
-/**
- * Returns standings grouped by group name, each with flag URLs.
- */
 router.get("/groups", async (req, res) => {
   try {
     const standings = await prisma.standing.findMany({
+      where: competitionFilter(req),
       orderBy: [{ groupName: "asc" }, { position: "asc" }]
     });
 

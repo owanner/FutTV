@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { CircularProgress, Box } from "@mui/material";
 import MainLayout from "../layouts/MainLayout";
 import ErrorBoundary from "../components/ErrorBoundary/ErrorBoundary";
@@ -25,9 +25,8 @@ function PageLoader() {
 
 export default function AppRoutes() {
   return (
-    <BrowserRouter>
-      <ErrorBoundary>
-        <Routes>
+    <ErrorBoundary>
+      <Routes>
           <Route element={<MainLayout />}>
             <Route
               path="/"
@@ -96,6 +95,5 @@ export default function AppRoutes() {
           </Route>
         </Routes>
       </ErrorBoundary>
-    </BrowserRouter>
   );
 }

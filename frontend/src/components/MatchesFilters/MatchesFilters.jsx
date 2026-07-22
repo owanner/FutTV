@@ -1,106 +1,33 @@
-import {
+import { Stack, TextField, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
 
-  Stack,
+import { useCompetition } from "../../contexts/CompetitionContext";
+import { getCompetition } from "../../config/competitions";
 
-  TextField,
-
-  FormControl,
-
-  InputLabel,
-
-  Select,
-
-  MenuItem
-
-} from "@mui/material";
-
-export default function MatchesFilters({
-
-  search,
-
-  setSearch,
-
-  status,
-
-  setStatus
-
-}) {
+export default function MatchesFilters({ search, setSearch, status, setStatus }) {
+  const { competitionId } = useCompetition();
+  const comp = getCompetition(competitionId);
+  const teamLabel = comp?.teamLabel || "Seleção";
 
   return (
-
-    <Stack
-
-      spacing={2}
-
-      sx={{
-        mb: 3
-      }}
-    >
-
+    <Stack spacing={2} sx={{ mb: 3 }}>
       <TextField
-
-        label="Buscar seleção"
-
+        label={`Buscar ${teamLabel}`}
         value={search}
-
-        onChange={event =>
-
-          setSearch(
-            event.target.value
-          )
-        }
+        onChange={event => setSearch(event.target.value)}
       />
-
       <FormControl>
-
-        <InputLabel>
-
-          Status
-
-        </InputLabel>
-
+        <InputLabel>Status</InputLabel>
         <Select
-
           value={status}
-
           label="Status"
-
-          onChange={event =>
-
-            setStatus(
-              event.target.value
-            )
-          }
+          onChange={event => setStatus(event.target.value)}
         >
-
-          <MenuItem value="">
-
-            Todos
-
-          </MenuItem>
-
-          <MenuItem value="live">
-
-            Ao vivo
-
-          </MenuItem>
-
-          <MenuItem value="upcoming">
-
-            Próximos
-
-          </MenuItem>
-
-          <MenuItem value="finished">
-
-            Encerrados
-
-          </MenuItem>
-
+          <MenuItem value="">Todos</MenuItem>
+          <MenuItem value="live">Ao vivo</MenuItem>
+          <MenuItem value="upcoming">Próximos</MenuItem>
+          <MenuItem value="finished">Encerrados</MenuItem>
         </Select>
-
       </FormControl>
-
     </Stack>
   );
 }

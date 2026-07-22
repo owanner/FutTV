@@ -30,9 +30,12 @@ router.get(
 
     try {
 
+      const competitionId =
+        req.query.competitionId || undefined;
+
       const bracket =
         await bracketService
-          .generateBracket();
+          .generateBracket(competitionId);
 
       res.json(bracket);
 

@@ -7,11 +7,11 @@ import {
 
 import SportsSoccerIcon from "@mui/icons-material/SportsSoccer";
 
-import { useNavigate } from "react-router-dom";
+import useNav from "../../hooks/useNav";
 
 export default function TopBar() {
 
-  const navigate = useNavigate();
+  const navigate = useNav();
 
   return (
  <AppBar
@@ -56,7 +56,8 @@ export default function TopBar() {
               fontSize: {
                 xs: 22,
                 md: 36
-              }
+              },
+              color: "white"
             }}
           />
 
@@ -67,7 +68,8 @@ export default function TopBar() {
                 md: "2.1rem"
               },
               fontWeight: 800,
-              letterSpacing: -0.5
+              letterSpacing: -0.5,
+              color: "white"
             }}
           >
             FuteTV

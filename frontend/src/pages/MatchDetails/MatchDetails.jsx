@@ -1,6 +1,4 @@
 import {
-  CircularProgress,
-  Alert,
   Card,
   CardContent,
   Typography,
@@ -27,6 +25,8 @@ import TimeLineCard
 import LineupsCard
   from "../../components/LineupsCard/LineupsCard";
 
+import { PageLoader, PageError } from "../../components/PageLoader/PageLoader";
+
 export default function MatchDetails() {
 
   const { id } =
@@ -40,23 +40,13 @@ export default function MatchDetails() {
 
   if (isLoading) {
 
-    return (
-      <CircularProgress />
-    );
+    return <PageLoader />;
 
   }
 
   if (error) {
 
-    return (
-
-      <Alert severity="error">
-
-        Erro ao carregar partida
-
-      </Alert>
-
-    );
+    return <PageError message="Erro ao carregar partida" />;
 
   }
 

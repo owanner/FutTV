@@ -1,44 +1,32 @@
 /**
- * Match synchronization from the FIFA API.
- * Fetches all matches across all stages, upserts them into the database,
- * and syncs broadcast information for each match.
- *
- * Cron scheduling is handled in server.js, not here.
+ * Match synchronization — multi-competition.
+ * Loops over each registered competition and syncs matches from the appropriate API.
  */
 
 const prisma = require("../database/prisma");
 const fifaApi = require("../services/fifaApi");
+const footballDataApi = require("../services/footballDataApi");
+const cbfApi = require("../services/cbfApi");
+const { competitions } = require("../config/competitions");
 
-/**
- * Extracts referee name from FIFA match officials array.
- */
 function extractReferee(match) {
   if (!match.Officials || match.Officials.length === 0) return null;
   return match.Officials[0]?.Name?.[0]?.Description || null;
 }
 
-/**
- * Extracts team name from FIFA team object.
- */
 function extractTeamName(team) {
   return team?.TeamName?.[0]?.Description || null;
 }
 
-/**
- * Extracts team flag URL, replacing format/size placeholders.
- */
 function extractTeamFlag(team) {
   return team?.PictureUrl
     ?.replace("{format}", "sq")
     ?.replace("{size}", "4");
 }
 
-/**
- * Builds the common match data object for create/update operations.
- */
-function buildMatchData(match) {
+function buildFifaMatchData(match, compId) {
   return {
-    competitionId: match.IdCompetition,
+    competitionId: compId,
     seasonId: match.IdSeason,
     stageId: match.IdStage,
     groupId: match.IdGroup,
@@ -61,65 +49,151 @@ function buildMatchData(match) {
   };
 }
 
-/**
- * Syncs broadcast channels for a single match.
- * Deletes existing broadcasts and recreates them from the FIFA API.
- */
-async function syncBroadcasts(matchId, seasonId) {
+function mapFbStatus(status) {
+  if (status === "FINISHED" || status === "AWARDED") return 0;
+  if (status === "IN_PLAY" || status === "PAUSED" || status === "HALFTIME") return 3;
+  if (status === "CANCELLED" || status === "POSTPONED" || status === "SUSPENDED") return 4;
+  return 1;
+}
+
+function buildFootballDataMatchData(match, compId, seasonId) {
+  const homeTeam = match.homeTeam || {};
+  const awayTeam = match.awayTeam || {};
+  return {
+    competitionId: compId,
+    seasonId: seasonId,
+    stageId: match.stage?.id?.toString() || "",
+    groupId: match.group?.name || null,
+    groupName: match.group?.name || null,
+    stageName: match.stage?.name || null,
+    homeTeam: homeTeam.name || null,
+    homeFlag: homeTeam.crest || null,
+    awayTeam: awayTeam.name || null,
+    awayFlag: awayTeam.crest || null,
+    homeCode: homeTeam.tla || null,
+    awayCode: awayTeam.tla || null,
+    date: new Date(match.utcDate),
+    stadium: match.venue || null,
+    city: null,
+    referee: match.referees?.[0]?.name || null,
+    attendance: match.attendance?.toString() || null,
+    status: mapFbStatus(match.status),
+    homeScore: match.score?.fullTime?.home ?? null,
+    awayScore: match.score?.fullTime?.away ?? null
+  };
+}
+
+async function syncFifaBroadcasts(matchId, seasonId) {
   const broadcasts = await fifaApi.getBroadcasts(seasonId, matchId);
-
-  // Atomic-like: delete all then create new ones
   await prisma.broadcast.deleteMany({ where: { matchId } });
-
   if (broadcasts.length > 0) {
     await prisma.broadcast.createMany({
-      data: broadcasts.map(channel => ({
+      data: broadcasts.map(ch => ({
         matchId,
-        channelId: channel.IdChannel,
-        name: channel.Name,
-        logo: channel.Logo,
-        url: channel.Url,
-        language: channel.Language
+        channelId: ch.IdChannel,
+        name: ch.Name,
+        logo: ch.Logo,
+        url: ch.Url,
+        language: ch.Language
       }))
     });
   }
 }
 
-/**
- * Main synchronization function.
- * Fetches all matches from FIFA API and upserts them into the local database,
- * including broadcast information for each match.
- */
-async function syncMatches() {
-  try {
-    console.log("\n⚽ Iniciando sincronização FIFA...");
+async function syncFifaCompetition(comp) {
+  const config = comp.config;
+  console.log(`\n⚽ [${comp.name}] Buscando jogos...`);
 
-    const matches = await fifaApi.getAllMatches();
-    console.log(`📅 Total de jogos encontrados: ${matches.length}`);
+  const matches = await fifaApi.getAllMatches(config);
+  console.log(`📅 ${matches.length} jogos encontrados`);
 
-    for (const match of matches) {
-      const matchId = match.IdMatch;
-      const matchData = buildMatchData(match);
+  for (const match of matches) {
+    const matchId = match.IdMatch;
+    const matchData = buildFifaMatchData(match, comp.id);
 
-      // Upsert match record
-      await prisma.match.upsert({
-        where: { id: matchId },
-        update: matchData,
-        create: { id: matchId, ...matchData }
-      });
+    await prisma.match.upsert({
+      where: { id: matchId },
+      update: matchData,
+      create: { id: matchId, ...matchData }
+    });
 
-      // Sync broadcasts (non-critical, won't crash the sync)
-      try {
-        await syncBroadcasts(matchId, match.IdSeason);
-      } catch (error) {
-        console.log(`⚠ Sem transmissões para ${matchId}`);
-      }
+    try {
+      await syncFifaBroadcasts(matchId, match.IdSeason);
+    } catch {
+      // No broadcasts for this match
+    }
+  }
+}
+
+async function syncFootballDataCompetition(comp) {
+  const { footballDataLeagueId, footballDataSeason } = comp.config;
+  console.log(`\n⚽ [${comp.name}] Buscando jogos...`);
+
+  const matches = await footballDataApi.getMatches(footballDataLeagueId, footballDataSeason);
+  console.log(`📅 ${matches.length} jogos encontrados`);
+
+  for (const match of matches) {
+    const matchId = `fb_${match.id}`;
+
+    // Skip matches that were manually adjusted (e.g. W.O., score corrections)
+    const existing = await prisma.match.findUnique({ where: { id: matchId }, select: { manuallyAdjusted: true } });
+    if (existing?.manuallyAdjusted) {
+      console.log(`  ⏭ Pulando ${matchId} (ajuste manual)`);
+      continue;
     }
 
-    console.log("\n✅ Sincronização concluída\n");
-  } catch (error) {
-    console.error("❌ Erro na sincronização:", error.message);
+    const matchData = buildFootballDataMatchData(match, comp.id, String(footballDataSeason));
+
+    await prisma.match.upsert({
+      where: { id: matchId },
+      update: matchData,
+      create: { id: matchId, ...matchData }
+    });
   }
+}
+
+async function syncCbfCompetition(comp) {
+  const { cbfCompetitionId, footballDataSeason } = comp.config;
+  const seasonId = String(footballDataSeason);
+  console.log(`\n⚽ [${comp.name}] Buscando jogos...`);
+
+  const matches = await cbfApi.getMatches(cbfCompetitionId);
+  console.log(`📅 ${matches.length} jogos encontrados`);
+
+  for (const match of matches) {
+    const matchId = `cbf_${match.id_jogo}`;
+
+    const existing = await prisma.match.findUnique({ where: { id: matchId }, select: { manuallyAdjusted: true } });
+    if (existing?.manuallyAdjusted) {
+      console.log(`  ⏭ Pulando ${matchId} (ajuste manual)`);
+      continue;
+    }
+
+    const matchData = cbfApi.buildMatchData(match, comp.id, seasonId);
+
+    await prisma.match.upsert({
+      where: { id: matchId },
+      update: matchData,
+      create: { id: matchId, ...matchData }
+    });
+  }
+}
+
+async function syncMatches() {
+  for (const comp of competitions) {
+    try {
+      if (comp.apiProvider === "fifa") {
+        await syncFifaCompetition(comp);
+      } else if (comp.apiProvider === "football-data") {
+        await syncFootballDataCompetition(comp);
+      } else if (comp.apiProvider === "cbf") {
+        await syncCbfCompetition(comp);
+      }
+    } catch (error) {
+      console.error(`❌ [${comp.name}] Erro na sincronização: ${error.message}`);
+    }
+  }
+  console.log("\n✅ Sincronização de jogos concluída\n");
 }
 
 module.exports = syncMatches;

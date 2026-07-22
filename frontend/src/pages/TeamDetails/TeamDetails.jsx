@@ -1,8 +1,9 @@
-import { Alert, CircularProgress, Stack, Card, CardContent, Typography, Box } from "@mui/material";
+import { Stack, Card, CardContent, Typography, Box } from "@mui/material";
 import { useParams } from "react-router-dom";
 import { useTeam } from "../../hooks/useTeam";
 import TeamHeader from "../../components/TeamHeader/TeamHeader";
 import MatchCard from "../../components/MatchCard/MatchCard";
+import { PageLoader, PageError } from "../../components/PageLoader/PageLoader";
 
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import SportsSoccerIcon from "@mui/icons-material/SportsSoccer";
@@ -25,8 +26,8 @@ export default function TeamDetails() {
   const { code } = useParams();
   const { data, isLoading, error } = useTeam(code);
 
-  if (isLoading) return <CircularProgress />;
-  if (error) return <Alert severity="error">Erro ao carregar seleção</Alert>;
+  if (isLoading) return <PageLoader />;
+  if (error) return <PageError message="Erro ao carregar clube" />;
 
   return (
     <Stack spacing={3}>
@@ -56,11 +57,18 @@ export default function TeamDetails() {
       <Card>
         <CardContent>
           <Typography variant="h6">Próximos Jogos</Typography>
-          <Stack spacing={2} sx={{ mt: 2 }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)", lg: "repeat(4, 1fr)" },
+              gap: 2,
+              mt: 2
+            }}
+          >
             {data.nextMatches.map((match) => (
               <MatchCard key={match.id} match={match} />
             ))}
-          </Stack>
+          </Box>
         </CardContent>
       </Card>
 
@@ -68,11 +76,18 @@ export default function TeamDetails() {
       <Card>
         <CardContent>
           <Typography variant="h6">Jogos Encerrados</Typography>
-          <Stack spacing={2} sx={{ mt: 2 }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)", lg: "repeat(4, 1fr)" },
+              gap: 2,
+              mt: 2
+            }}
+          >
             {data.finishedMatches.map((match) => (
               <MatchCard key={match.id} match={match} />
             ))}
-          </Stack>
+          </Box>
         </CardContent>
       </Card>
     </Stack>

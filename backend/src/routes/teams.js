@@ -1,46 +1,50 @@
 /**
  * Teams routes.
  *
- * GET /teams      — list all teams from standings
- * GET /teams/:code — team detail with matches and stats
+ * GET /teams?competitionId=wc2026      — list all teams from standings
+ * GET /teams/:code?competitionId=wc2026 — team detail with matches and stats
  */
 
 const express = require("express");
 const router = express.Router();
 const prisma = require("../database/prisma");
 
-/**
- * List all teams ordered by group and position.
- */
+function competitionFilter(req) {
+  const competitionId = req.query.competitionId;
+  return competitionId ? { competitionId } : {};
+}
+
 router.get("/", async (req, res) => {
   try {
     const teams = await prisma.standing.findMany({
+      where: competitionFilter(req),
       orderBy: [{ groupName: "asc" }, { position: "asc" }]
     });
     res.json(teams);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Erro ao buscar seleções" });
+    res.status(500).json({ error: "Erro ao buscar clubes" });
   }
 });
 
-/**
- * Team detail: standing, flag, qualification status, and match history.
- */
 router.get("/:code", async (req, res) => {
   try {
     const code = req.params.code.toUpperCase();
+    const compFilter = competitionFilter(req);
 
     const standing = await prisma.standing.findFirst({
-      where: { teamCode: code }
+      where: { teamCode: code, ...compFilter }
     });
 
     if (!standing) {
-      return res.status(404).json({ error: "Seleção não encontrada" });
+      return res.status(404).json({ error: "Clube não encontrado" });
     }
 
     const matches = await prisma.match.findMany({
-      where: { OR: [{ homeCode: code }, { awayCode: code }] },
+      where: {
+        OR: [{ homeCode: code }, { awayCode: code }],
+        ...compFilter
+      },
       include: { broadcasts: true },
       orderBy: { date: "asc" }
     });
@@ -49,7 +53,6 @@ router.get("/:code", async (req, res) => {
     const nextMatches = matches.filter(m => m.date > now && m.status === 1);
     const finishedMatches = matches.filter(m => m.status === 0);
 
-    // Determine qualification status based on group position
     const status =
       standing.position <= 2 ? "qualified"
       : standing.position === 3 ? "playoff"
@@ -58,7 +61,7 @@ router.get("/:code", async (req, res) => {
     res.json({
       team: {
         ...standing,
-        flag: `https://api.fifa.com/api/v3/picture/flags-sq-4/${code}`,
+        flag: standing.badge || `https://api.fifa.com/api/v3/picture/flags-sq-4/${code}`,
         status
       },
       nextMatches,
@@ -66,7 +69,7 @@ router.get("/:code", async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Erro ao buscar seleção" });
+    res.status(500).json({ error: "Erro ao buscar clube" });
   }
 });
 

@@ -2,16 +2,12 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider, CssBaseline } from "@mui/material";
+import { BrowserRouter } from "react-router-dom";
+import { CompetitionProvider, useCompetition } from "./contexts/CompetitionContext";
+import createCompetitionTheme from "./theme/createCompetitionTheme";
 import App from "./App";
-import theme from "./theme/theme";
 import "./index.css";
 
-/**
- * QueryClient with sensible defaults for a sports data app:
- * - staleTime: 30s — sports data changes frequently but not every second
- * - retry: 2 — avoid hammering the API on failures
- * - refetchOnWindowFocus: false — prevent unnecessary refetches
- */
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -22,13 +18,30 @@ const queryClient = new QueryClient({
   }
 });
 
+/**
+ * Inner wrapper that reads the current competition and provides a dynamic theme.
+ * BrowserRouter must live outside this so CompetitionProvider can use useSearchParams.
+ */
+function ThemedApp() {
+  const { competition } = useCompetition();
+  const theme = createCompetitionTheme(competition);
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <App />
+    </ThemeProvider>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <App />
-      </ThemeProvider>
+      <BrowserRouter>
+        <CompetitionProvider>
+          <ThemedApp />
+        </CompetitionProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   </React.StrictMode>
 );

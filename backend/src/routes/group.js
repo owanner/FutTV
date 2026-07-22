@@ -1,7 +1,9 @@
 /**
  * Group detail route.
  *
- * GET /group/:letter — returns standings and matches for a specific group
+ * GET /group/:letter?competitionId=wc2026
+ *
+ * Returns standings and matches for a specific group.
  */
 
 const express = require("express");
@@ -13,14 +15,17 @@ router.get("/:letter", async (req, res) => {
   try {
     const letter = req.params.letter.toUpperCase();
     const groupName = `Grupo ${letter}`;
+    const competitionId = req.query.competitionId;
+
+    const where = { groupName, ...(competitionId ? { competitionId } : {}) };
 
     const standings = await prisma.standing.findMany({
-      where: { groupName },
+      where,
       orderBy: { position: "asc" }
     });
 
     const matches = await prisma.match.findMany({
-      where: { groupName },
+      where,
       orderBy: { date: "asc" }
     });
 

@@ -1,35 +1,23 @@
 import { Card, CardContent, Typography, Stack, Avatar, Divider, Box } from "@mui/material";
 import { useTheme, useMediaQuery } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import useNav from "../../hooks/useNav";
+import { useCompetition } from "../../contexts/CompetitionContext";
+import { getCompetition } from "../../config/competitions";
 import { abbreviateTeamName } from "../../utils/teamUtils";
-
-/** Column definitions for the stats grid. */
-const STAT_COLUMNS = [
-  { key: "points", label: "P", bold: true },
-  { key: "played", label: "PJ", bold: false },
-  { key: "wins", label: "V", bold: false },
-  { key: "draws", label: "E", bold: false },
-  { key: "losses", label: "D", bold: false },
-  { key: "goalDifference", label: "SG", bold: false, format: (v) => (v > 0 ? `+${v}` : v) }
-];
-
-/** Returns the qualification border color based on group position. */
-function getPositionColor(position) {
-  if (position <= 2) return "#43a047"; // qualified (green)
-  if (position === 3) return "#fbc02d"; // playoff (yellow)
-  return "#e53935"; // eliminated (red)
-}
+import { getPositionColor, STAT_COLUMNS } from "../../utils/standingsUtils";
 
 export default function GroupStandings({ groupName, teams }) {
-  const navigate = useNavigate();
+  const navigate = useNav();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const { competitionId } = useCompetition();
+  const comp = getCompetition(competitionId);
+  const teamLabel = comp?.teamLabel || "Seleção";
   const groupLetter = groupName.replace("Grupo ", "");
 
   return (
     <Card>
       <CardContent>
-        {/* Group name — clickable to navigate to group detail */}
         <Typography
           variant="h6"
           fontWeight={700}
@@ -42,7 +30,6 @@ export default function GroupStandings({ groupName, teams }) {
 
         <Divider sx={{ mb: 2 }} />
 
-        {/* Table header */}
         <Stack direction="row" alignItems="center" sx={{ mb: 1, px: 1, width: "100%" }}>
           <Box
             sx={{
@@ -54,7 +41,7 @@ export default function GroupStandings({ groupName, teams }) {
             }}
           >
             <Typography sx={{ fontSize: "0.90rem", fontWeight: 700, color: "primary.main" }} variant="caption">
-              Seleção
+              {teamLabel}
             </Typography>
           </Box>
 
@@ -67,14 +54,12 @@ export default function GroupStandings({ groupName, teams }) {
 
         <Divider sx={{ mb: 1 }} />
 
-        {/* Team rows */}
         {teams.map((team) => (
           <Stack
             key={team.teamId}
             direction="row"
-            sx={{ width: "100%", py: 1, px: 1, borderLeft: `4px solid ${getPositionColor(team.position)}` }}
+            sx={{ width: "100%", py: 1, px: 1, borderLeft: `4px solid ${getPositionColor(team.position, competitionId)}` }}
           >
-            {/* Team name cell */}
             <Stack
               direction="row"
               spacing={0.75}
@@ -88,6 +73,9 @@ export default function GroupStandings({ groupName, teams }) {
                 borderColor: "rgba(0,0,0,0.08)"
               }}
             >
+              <Typography variant="body2" sx={{ fontSize: "0.75rem", fontWeight: 700, color: "text.secondary", minWidth: 18 }}>
+                {team.position}
+              </Typography>
               <Avatar
                 src={team.flag}
                 alt={team.teamName}
@@ -109,7 +97,6 @@ export default function GroupStandings({ groupName, teams }) {
               </Typography>
             </Stack>
 
-            {/* Stat cells */}
             {STAT_COLUMNS.map((col) => (
               <Box key={col.key} sx={{ width: { xs: 36, md: 60 }, display: "flex", justifyContent: "center" }}>
                 <Typography textAlign="center" fontWeight={col.bold ? 700 : col.key === "goalDifference" ? 600 : 400}>

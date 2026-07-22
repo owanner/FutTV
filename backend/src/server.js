@@ -11,14 +11,16 @@ const express = require("express");
 const cors = require("cors");
 const cron = require("node-cron");
 
-// Database
 const prisma = require("./database/prisma");
 
 // Cron jobs
 const syncMatches = require("./cron/syncMatches");
 const syncStandings = require("./cron/syncStandings");
+const syncLibertadoresBroadcasts = require("./cron/syncLibertadoresBroadcasts");
+const syncBrasileiraoBroadcasts = require("./cron/syncBrasileiraoBroadcasts");
 
 // Routes
+const competitionsRoutes = require("./routes/competitions");
 const matchesRoutes = require("./routes/matches");
 const standingsRoutes = require("./routes/standings");
 const bracketRoutes = require("./routes/bracket");
@@ -34,18 +36,19 @@ app.use(express.json());
 
 /**
  * Run initial syncs on server start.
- * Errors are caught inside the sync functions.
  */
 syncMatches();
 syncStandings();
+syncLibertadoresBroadcasts();
+syncBrasileiraoBroadcasts();
 
 /**
  * Schedule recurring syncs.
- * - Matches: every 5 minutes (was incorrectly set to every minute with duplicates)
- * - Standings: every 15 minutes
  */
 cron.schedule("*/5 * * * *", syncMatches);
 cron.schedule("*/15 * * * *", syncStandings);
+cron.schedule("*/30 * * * *", syncLibertadoresBroadcasts);
+cron.schedule("*/30 * * * *", syncBrasileiraoBroadcasts);
 
 /**
  * Health check endpoint.
@@ -57,6 +60,7 @@ app.get("/", (req, res) => {
 /**
  * API routes.
  */
+app.use("/competitions", competitionsRoutes);
 app.use("/home", homeRoutes);
 app.use("/matches", matchesRoutes);
 app.use("/standings", standingsRoutes);
@@ -66,7 +70,7 @@ app.use("/teams", teamsRoutes);
 app.use("/group", groupRoutes);
 
 /**
- * 404 handler for unmatched routes.
+ * 404 handler.
  */
 app.use((req, res) => {
   res.status(404).json({ error: "Rota não encontrada" });
@@ -90,7 +94,7 @@ const server = app.listen(PORT, () => {
 });
 
 /**
- * Graceful shutdown: close Prisma connection on SIGTERM/SIGINT.
+ * Graceful shutdown.
  */
 async function shutdown(signal) {
   console.log(`\n${signal} recebido. Encerrando...`);

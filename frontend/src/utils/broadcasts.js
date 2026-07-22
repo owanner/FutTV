@@ -4,13 +4,16 @@
  */
 
 const BROADCAST_PRIORITY = {
-  "Cazé TV": 1,
-  "TV Globo": 2,
-  "SBT": 3,
-  "sportv": 4,
-  "GETV": 5,
-  "Globoplay": 6,
-  "NSPORTS": 7
+  "TV Globo": 1,
+  "Cazé TV": 2,
+  "sportv": 3,
+  "Paramount": 4,
+  "SBT": 5,
+  "EPSN no Disney": 6,
+  "GE TV": 7,
+  "GETV": 8,
+  "Globoplay": 9,
+  "NSPORTS": 10
 };
 
 /** Deduplicates broadcasts by name, keeping the first occurrence. */
