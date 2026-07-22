@@ -16,19 +16,27 @@ export default function GroupStandings({ groupName, teams }) {
   const groupLetter = groupName.replace("Grupo ", "");
 
   return (
-    <Card>
-      <CardContent>
+    <Card
+      sx={{
+        borderRadius: 2,
+        border: "1px solid",
+        borderColor: "divider",
+        transition: "box-shadow .15s ease",
+        "&:hover": { boxShadow: "0 4px 12px rgba(0,0,0,0.06)" }
+      }}
+    >
+      <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
         <Typography
           variant="h6"
           fontWeight={700}
           gutterBottom
-          sx={{ cursor: "pointer", "&:hover": { opacity: 0.8 } }}
+          sx={{ cursor: "pointer", "&:hover": { opacity: 0.8 }, px: 2, pt: 2, mb: 0 }}
           onClick={() => navigate(`/group/${groupLetter}`)}
         >
           {groupName}
         </Typography>
 
-        <Divider sx={{ mb: 2 }} />
+        <Divider sx={{ mx: 2 }} />
 
         <Stack direction="row" alignItems="center" sx={{ mb: 1, px: 1, width: "100%" }}>
           <Box

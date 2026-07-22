@@ -14,15 +14,24 @@ import {
 import { useStandings } from "../../hooks/useStandings";
 import { useCompetition } from "../../contexts/CompetitionContext";
 import GroupStandings from "../../components/GroupStandings/GroupStandings";
+import PageHeader from "../../components/PageHeader/PageHeader";
 import { getCompetition } from "../../config/competitions";
 import { getPositionColor, STAT_COLUMNS, BRASILEIRAO_ZONES } from "../../utils/standingsUtils";
 import { PageLoader, PageError } from "../../components/PageLoader/PageLoader";
 
+const CARD_SX = {
+  borderRadius: 2,
+  border: "1px solid",
+  borderColor: "divider",
+  transition: "box-shadow .15s ease",
+  "&:hover": { boxShadow: "0 4px 12px rgba(0,0,0,0.06)" }
+};
+
 function FlatStandings({ teams, teamLabel, competitionId }) {
   return (
-    <Card>
-      <CardContent>
-        <Stack direction="row" alignItems="center" sx={{ mb: 1, px: 1, width: "100%" }}>
+    <Card sx={CARD_SX}>
+      <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
+        <Stack direction="row" alignItems="center" sx={{ mb: 1, px: 2, pt: 2, width: "100%" }}>
           <Box
             sx={{
               flex: 1,
@@ -44,13 +53,13 @@ function FlatStandings({ teams, teamLabel, competitionId }) {
           ))}
         </Stack>
 
-        <Divider sx={{ mb: 1 }} />
+        <Divider sx={{ mx: 2 }} />
 
         {teams.map((team) => (
           <Stack
             key={team.teamId}
             direction="row"
-            sx={{ width: "100%", py: 1, px: 1, borderLeft: `4px solid ${getPositionColor(team.position, competitionId)}` }}
+            sx={{ width: "100%", py: 1, px: 2, borderLeft: `4px solid ${getPositionColor(team.position, competitionId)}` }}
           >
             <Stack
               direction="row"
@@ -92,6 +101,18 @@ function FlatStandings({ teams, teamLabel, competitionId }) {
   );
 }
 
+function LegendBar({ children }) {
+  return (
+    <Card sx={CARD_SX}>
+      <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
+        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", justifyContent: "center" }}>
+          {children}
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Standings() {
   const { data, isLoading, error } = useStandings();
   const { competition } = useCompetition();
@@ -101,19 +122,12 @@ export default function Standings() {
   const comp = getCompetition(competition?.id);
   const teamLabel = comp?.teamLabel || "Time";
 
-  if (isLoading) {
-    return <PageLoader />;
-  }
-
-  if (error) {
-    return <PageError message="Erro ao carregar classificação" />;
-  }
+  if (isLoading) return <PageLoader />;
+  if (error) return <PageError message="Erro ao carregar classificação" />;
 
   const groups = {};
   data.forEach((team) => {
-    if (!groups[team.groupName]) {
-      groups[team.groupName] = [];
-    }
+    if (!groups[team.groupName]) groups[team.groupName] = [];
     groups[team.groupName].push(team);
   });
 
@@ -147,58 +161,60 @@ export default function Standings() {
     const sortedTeams = [...data].sort((a, b) => b.points - a.points);
 
     return (
-      <Stack spacing={3}>
-        <Card>
-          <CardContent>
-            <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", justifyContent: "center" }}>
-              {legendChips}
+      <>
+        <PageHeader
+          title="Classificação"
+          colors={competition?.colors}
+        />
+
+        <Stack spacing={2}>
+          <LegendBar>{legendChips}</LegendBar>
+
+          <Tabs
+            value={tab}
+            onChange={(_, v) => setTab(v)}
+            variant="fullWidth"
+            sx={{
+              borderBottom: 1,
+              borderColor: "divider",
+              minHeight: 36,
+              "& .MuiTab-root": { minHeight: 36, py: 0 }
+            }}
+          >
+            <Tab label="Fase de Grupos" />
+            <Tab label="Classificação" />
+          </Tabs>
+
+          {tab === 0 && (
+            <Stack spacing={2}>
+              {Object.entries(groups).map(([groupName, teams]) => (
+                <GroupStandings key={groupName} groupName={groupName} teams={teams} />
+              ))}
             </Stack>
-          </CardContent>
-        </Card>
+          )}
 
-        <Tabs
-          value={tab}
-          onChange={(_, v) => setTab(v)}
-          variant="fullWidth"
-          sx={{
-            borderBottom: 1,
-            borderColor: "divider",
-            minHeight: 36,
-            "& .MuiTab-root": { minHeight: 36, py: 0 }
-          }}
-        >
-          <Tab label="Fase de Grupos" />
-          <Tab label="Classificação" />
-        </Tabs>
-
-        {tab === 0 && (
-          <Stack spacing={3}>
-            {Object.entries(groups).map(([groupName, teams]) => (
-              <GroupStandings key={groupName} groupName={groupName} teams={teams} />
-            ))}
-          </Stack>
-        )}
-
-        {tab === 1 && (
-          <FlatStandings teams={sortedTeams} teamLabel={teamLabel} competitionId={competition?.id} />
-        )}
-      </Stack>
+          {tab === 1 && (
+            <FlatStandings teams={sortedTeams} teamLabel={teamLabel} competitionId={competition?.id} />
+          )}
+        </Stack>
+      </>
     );
   }
 
   return (
-    <Stack spacing={3}>
-      <Card>
-        <CardContent>
-          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", justifyContent: "center" }}>
-            {legendChips}
-          </Stack>
-        </CardContent>
-      </Card>
+    <>
+      <PageHeader
+        title="Classificação"
+        colors={competition?.colors}
+      />
 
-      {Object.entries(groups).map(([groupName, teams]) => (
-        <GroupStandings key={groupName} groupName={groupName} teams={teams} />
-      ))}
-    </Stack>
+      <Stack spacing={2}>
+        <LegendBar>{legendChips}</LegendBar>
+
+        {Object.entries(groups).map(([groupName, teams]) => (
+          <GroupStandings key={groupName} groupName={groupName} teams={teams} />
+        ))}
+      </Stack>
+    </>
   );
 }

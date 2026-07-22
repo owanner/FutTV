@@ -21,6 +21,7 @@ import { getStatus } from "../../utils/statusUtils";
 import { sortBroadcasts } from "../../utils/broadcasts";
 import { abbreviateTeamName } from "../../utils/teamUtils";
 
+import SectionHeader from "../../components/SectionHeader/SectionHeader";
 import useNav from "../../hooks/useNav";
 import dayjs from "dayjs";
 import "dayjs/locale/pt-br";
@@ -48,36 +49,6 @@ function CompetitionBadge({ name, colors }) {
         ".MuiChip-label": { px: 1 }
       }}
     />
-  );
-}
-
-function FeedSectionHeader({ label, count, accent }) {
-  return (
-    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-      <Box
-        sx={{
-          width: 4,
-          height: 22,
-          borderRadius: 2,
-          bgcolor: accent || "primary.main"
-        }}
-      />
-      <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-        {label}
-      </Typography>
-      {count > 0 && (
-        <Chip
-          size="small"
-          label={count}
-          sx={{
-            height: 22,
-            fontSize: "0.7rem",
-            fontWeight: 700,
-            bgcolor: "grey.100"
-          }}
-        />
-      )}
-    </Stack>
   );
 }
 
@@ -489,7 +460,7 @@ export default function Home() {
           {/* Live section */}
           {liveNoHero.length > 0 && (
             <Box>
-              <FeedSectionHeader
+              <SectionHeader
                 label="Ao vivo"
                 count={liveNoHero.length}
                 accent="#DC2626"
@@ -506,7 +477,7 @@ export default function Home() {
           {upcoming.length > 0 && (
             <Box>
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-                <FeedSectionHeader
+                <SectionHeader
                   label="Próximos jogos"
                   count={upcoming.length}
                   accent="#006A67"
@@ -530,7 +501,7 @@ export default function Home() {
           {recent.length > 0 && (
             <Box>
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-                <FeedSectionHeader
+                <SectionHeader
                   label="Resultados recentes"
                   count={recent.length}
                   accent="#475569"
@@ -542,7 +513,7 @@ export default function Home() {
 
           {/* Quick competition links */}
           <Box sx={{ pt: 2 }}>
-            <FeedSectionHeader label="Competições" accent="#6366F1" />
+            <SectionHeader label="Competições" accent="#6366F1" />
             <Stack direction="row" spacing={1.5} sx={{ overflowX: "auto", pb: 1 }}>
               {allCompetitions.map((c) => (
                 <Card
