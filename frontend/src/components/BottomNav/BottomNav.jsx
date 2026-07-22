@@ -7,8 +7,6 @@ import {
 import {
   Home,
   SportsSoccer,
-  TableChart,
-  AccountTree,
 } from "@mui/icons-material";
 
 import { useLocation } from "react-router-dom";
@@ -48,16 +46,6 @@ export default function BottomNav() {
           value="/competitions"
           label="Competições"
           icon={<SportsSoccer />}
-        />
-        <BottomNavigationAction
-          value="/standings"
-          label="Tabela"
-          icon={<TableChart />}
-        />
-        <BottomNavigationAction
-          value="/bracket"
-          label="Fase Final"
-          icon={<AccountTree />}
         />
       </BottomNavigation>
     </Paper>

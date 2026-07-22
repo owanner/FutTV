@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Stack,
   Card,
@@ -86,6 +86,10 @@ export default function Standings() {
   const isBrasileirao = competitionId === "brasileirao2026";
   const [view, setView] = useState(isLibertadores ? "groups" : "flat");
   const comp = getCompetition(competitionId);
+
+  useEffect(() => {
+    setView(isLibertadores ? "groups" : "flat");
+  }, [isLibertadores]);
   const teamLabel = comp?.teamLabel || "Time";
   const allCompetitions = getAllCompetitions();
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
   Box,
@@ -33,6 +33,7 @@ import { PageLoader, PageError } from "../../components/PageLoader/PageLoader";
 
 import useNav from "../../hooks/useNav";
 import dayjs from "dayjs";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 /* ─── Card style constant ─── */
 const CARD_SX = {
@@ -256,6 +257,10 @@ function StandingsTab({ competitionId, competition }) {
   const teamLabel = comp?.teamLabel || "Time";
   const [view, setView] = useState(isLibertadores ? "groups" : "flat");
 
+  useEffect(() => {
+    setView(isLibertadores ? "groups" : "flat");
+  }, [isLibertadores]);
+
   if (isLoading) return <PageLoader />;
   if (error) return <PageError message="Erro ao carregar classificação" />;
 
@@ -425,6 +430,7 @@ function FlatStandings({ teams, teamLabel, competitionId }) {
 
 export default function CompetitionDetail() {
   const { id } = useParams();
+  const navigate = useNav();
   const competition = getCompetition(id);
   const [tab, setTab] = useState(0);
 
@@ -440,17 +446,32 @@ export default function CompetitionDetail() {
 
   return (
     <Stack spacing={2}>
-      {/* Header */}
-      <Box
-        sx={{
-          height: 6,
-          borderRadius: 2,
-          background: `linear-gradient(90deg, ${competition.colors.primary}, ${competition.colors.secondary || competition.colors.primary})`
-        }}
-      />
-      <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
-        {competition.shortName || competition.name}
-      </Typography>
+      {/* Back arrow + Header */}
+      <Stack direction="row" alignItems="center" spacing={1}>
+        <Box
+          onClick={() => navigate("/competitions")}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            cursor: "pointer",
+            color: "text.secondary",
+            "&:hover": { color: "text.primary" }
+          }}
+        >
+          <ArrowBackIcon />
+        </Box>
+        <Box
+          sx={{
+            height: 6,
+            width: 40,
+            borderRadius: 2,
+            background: `linear-gradient(90deg, ${competition.colors.primary}, ${competition.colors.secondary || competition.colors.primary})`
+          }}
+        />
+        <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
+          {competition.shortName || competition.name}
+        </Typography>
+      </Stack>
 
       {/* Tabs */}
       <Tabs
