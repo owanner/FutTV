@@ -11,7 +11,7 @@ const CompetitionContext = createContext(null);
 export function CompetitionProvider({ children }) {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const competitionId = searchParams.get("competition") || "wc2026";
+  const competitionId = searchParams.get("competition") || "brasileirao2026";
   const competition = getCompetition(competitionId);
 
   const setCompetition = useCallback(

@@ -5,18 +5,18 @@
 
 const competitions = [
   {
-    id: "wc2026",
-    name: "Copa do Mundo FIFA 2026",
-    shortName: "Copa 2026",
-    seasonId: "285023",
-    provider: "fifa",
-    flag: "https://api.fifa.com/api/v3/picture/flags-sq-4/ALL",
-    teamLabel: "Seleção",
-    teamLabelPlural: "Seleções",
+    id: "brasileirao2026",
+    name: "Brasileirão Série A 2026",
+    shortName: "Brasileirão",
+    seasonId: "2026",
+    provider: "cbf",
+    flag: "https://upload.wikimedia.org/wikipedia/commons/9/93/Bandera_do_Brasileir%C3%A3o_S%C3%A9rie_A.svg",
+    teamLabel: "Clube",
+    teamLabelPlural: "Clubes",
     colors: {
-      primary: "#3CAC3B",
-      secondary: "#2A398D",
-      accent: "#E61D25"
+      primary: "#19AE47",
+      secondary: "#FFDC02",
+      accent: "#193375"
     }
   },
   {
@@ -35,18 +35,18 @@ const competitions = [
     }
   },
   {
-    id: "brasileirao2026",
-    name: "Brasileirão Série A 2026",
-    shortName: "Brasileirão",
-    seasonId: "2026",
-    provider: "cbf",
-    flag: "https://upload.wikimedia.org/wikipedia/commons/9/93/Bandera_do_Brasileir%C3%A3o_S%C3%A9rie_A.svg",
-    teamLabel: "Clube",
-    teamLabelPlural: "Clubes",
+    id: "wc2026",
+    name: "Copa do Mundo FIFA 2026",
+    shortName: "Copa 2026",
+    seasonId: "285023",
+    provider: "fifa",
+    flag: "https://api.fifa.com/api/v3/picture/flags-sq-4/ALL",
+    teamLabel: "Seleção",
+    teamLabelPlural: "Seleções",
     colors: {
-      primary: "#19AE47",
-      secondary: "#FFDC02",
-      accent: "#193375"
+      primary: "#3CAC3B",
+      secondary: "#2A398D",
+      accent: "#E61D25"
     }
   }
 ];

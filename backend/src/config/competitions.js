@@ -6,21 +6,21 @@
 
 const competitions = [
   {
-    id: "wc2026",
-    name: "Copa do Mundo 2026",
-    slug: "world-cup",
-    apiProvider: "fifa",
+    id: "brasileirao2026",
+    name: "Campeonato Brasileiro Série A 2026",
+    slug: "brasileirao",
+    apiProvider: "cbf",
     config: {
-      competitionId: "17",
-      seasonId: "285023",
-      groupStageId: "289273"
+      cbfCompetitionId: "1260611",
+      footballDataLeagueId: "BSA",
+      footballDataSeason: 2026
     },
     colors: {
-      primary: "#2A398D",
-      secondary: "#3CAC3B",
-      accent: "#E61D25",
-      gradient: "linear-gradient(90deg, #2A398D 0%, #3CAC3B 50%, #E61D25 100%)",
-      background: "#F6FAF8",
+      primary: "#19AE47",
+      secondary: "#FFDC02",
+      accent: "#193375",
+      gradient: "linear-gradient(90deg, #19AE47 0%, #FFDC02 50%, #193375 100%)",
+      background: "#F6FDF9",
       paper: "#FFFFFF"
     }
   },
@@ -45,21 +45,21 @@ const competitions = [
     }
   },
   {
-    id: "brasileirao2026",
-    name: "Campeonato Brasileiro Série A 2026",
-    slug: "brasileirao",
-    apiProvider: "cbf",
+    id: "wc2026",
+    name: "Copa do Mundo 2026",
+    slug: "world-cup",
+    apiProvider: "fifa",
     config: {
-      cbfCompetitionId: "1260611",
-      footballDataLeagueId: "BSA",
-      footballDataSeason: 2026
+      competitionId: "17",
+      seasonId: "285023",
+      groupStageId: "289273"
     },
     colors: {
-      primary: "#19AE47",
-      secondary: "#FFDC02",
-      accent: "#193375",
-      gradient: "linear-gradient(90deg, #19AE47 0%, #FFDC02 50%, #193375 100%)",
-      background: "#F6FDF9",
+      primary: "#2A398D",
+      secondary: "#3CAC3B",
+      accent: "#E61D25",
+      gradient: "linear-gradient(90deg, #2A398D 0%, #3CAC3B 50%, #E61D25 100%)",
+      background: "#F6FAF8",
       paper: "#FFFFFF"
     }
   }

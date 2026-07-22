@@ -97,7 +97,7 @@ const compMeta = Object.fromEntries(
 /**
  * GET /home/all
  *
- * Returns a unified feed of live, upcoming (next 7 days), and recent (last 2 days)
+ * Returns a unified feed of live, upcoming (next 30 days), and recent (last 2 days)
  * matches across all competitions, each enriched with competition metadata.
  *
  * Query params:
@@ -125,15 +125,15 @@ router.get("/all", async (req, res) => {
     }
 
     if (statusFilter === "all" || statusFilter === "upcoming") {
-      const sevenDays = new Date(now);
-      sevenDays.setDate(sevenDays.getDate() + 7);
+      const thirtyDays = new Date(now);
+      thirtyDays.setDate(thirtyDays.getDate() + 30);
 
       fetches.push(
         prisma.match.findMany({
           where: {
             ...baseWhere,
             status: { not: 3, not: 0 },
-            date: { gte: now, lte: sevenDays }
+            date: { gte: now, lte: thirtyDays }
           },
           include: { broadcasts: true },
           orderBy: { date: "asc" }
