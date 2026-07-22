@@ -528,7 +528,7 @@ export default function Home() {
                   }}
                 >
                   <CardActionArea
-                    onClick={() => setCompetition(c.id)}
+                    onClick={() => navigate(`/competitions/${c.id}`)}
                     sx={{ p: 2 }}
                   >
                     <Stack spacing={0.5}>

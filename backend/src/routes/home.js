@@ -110,15 +110,15 @@ router.get("/all", async (req, res) => {
     const compId = req.query.competitionId || null;
     const statusFilter = req.query.status || "all";
 
-    const baseWhere = { status: { not: 4 } };
-    if (compId) baseWhere.competitionId = compId;
-
     const fetches = [];
 
     if (statusFilter === "all" || statusFilter === "live") {
       fetches.push(
         prisma.match.findMany({
-          where: { ...baseWhere, status: 3 },
+          where: {
+            competitionId: compId || undefined,
+            status: 3
+          },
           include: { broadcasts: true }
         }).then(matches => matches.map(m => ({ ...m, _feedSection: "live" })))
       );
@@ -127,13 +127,14 @@ router.get("/all", async (req, res) => {
     if (statusFilter === "all" || statusFilter === "upcoming") {
       const fiveDays = new Date(now);
       fiveDays.setDate(fiveDays.getDate() + 5);
+      const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
 
       fetches.push(
         prisma.match.findMany({
           where: {
-            ...baseWhere,
-            status: { not: 3, not: 0 },
-            date: { gte: now, lte: fiveDays }
+            competitionId: compId || undefined,
+            status: { notIn: [0, 3, 4] },
+            date: { gte: threeHoursAgo, lte: fiveDays }
           },
           include: { broadcasts: true },
           orderBy: { date: "asc" }
@@ -148,7 +149,7 @@ router.get("/all", async (req, res) => {
       fetches.push(
         prisma.match.findMany({
           where: {
-            ...baseWhere,
+            competitionId: compId || undefined,
             status: 0,
             date: { gte: twoDaysAgo, lte: now }
           },

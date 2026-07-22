@@ -1,395 +1,183 @@
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Grid,
-  Divider,
-  Stack,
-  Chip
-} from "@mui/material";
-
+import { Box, Card, CardContent, Typography, Divider, Stack, Chip } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
 
 function getDisplayPlayerName(fullName) {
-  if (!fullName) {
-    return "";
-  }
-
+  if (!fullName) return "";
   const parts = fullName.trim().split(/\s+/);
-
-  if (parts.length === 1) {
-    return parts[0];
-  }
-
+  if (parts.length === 1) return parts[0];
   const upperWords = parts.filter(
-    word =>
-      word === word.toUpperCase() &&
-      /[A-ZÀ-ÖØ-Ý]/.test(word)
+    (w) => w === w.toUpperCase() && /[A-Z\u00C0-\u00D6\u00D8-\u00DE]/.test(w)
   );
-
-  // Marc CUCURELLA
-  if (upperWords.length === 1) {
-    return upperWords[0];
-  }
-
-  // SIDNY LOPES CABRAL
-  if (upperWords.length > 1) {
-    return upperWords[upperWords.length - 1];
-  }
-
-  // Lionel Messi
+  if (upperWords.length === 1) return upperWords[0];
+  if (upperWords.length > 1) return upperWords[upperWords.length - 1];
   return parts[parts.length - 1];
 }
 
-function PlayerRow({
-  player,
-  compact = false
-}) {
+function PlayerRow({ player, compact, accentColor }) {
   return (
-    <Box
+    <Stack
+      direction="row"
+      alignItems="center"
+      spacing={1}
       sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 1,
+        py: 0.6,
         px: 1,
-        py: 0.75,
-        borderRadius: 2,
-        transition: "0.2s",
-
-        "&:hover": {
-          backgroundColor: "action.hover"
-        }
+        borderRadius: 1,
+        "&:hover": { bgcolor: "action.hover" },
+        transition: "background-color .15s"
       }}
     >
       <Box
         sx={{
-          width: compact ? 22 : 28,
-          height: compact ? 22 : 28,
-
-
+          width: compact ? 22 : 26,
+          height: compact ? 22 : 26,
           borderRadius: "50%",
-
-          bgcolor: "primary.main",
+          bgcolor: accentColor || "primary.main",
           color: "white",
-
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: compact ? 10 : 12,
+          fontSize: compact ? 10 : 11,
           fontWeight: 700,
-
           flexShrink: 0
         }}
       >
         {player.ShirtNumber}
       </Box>
-
       <Typography
         variant={compact ? "caption" : "body2"}
         sx={{
           lineHeight: 1.2,
-          fontWeight: compact ? 600 : 400
+          fontWeight: compact ? 600 : 400,
+          fontSize: compact ? "0.78rem" : "0.85rem"
         }}
       >
         {compact
-          ? getDisplayPlayerName(
-            player.PlayerName?.[0]?.Description
-          )
+          ? getDisplayPlayerName(player.PlayerName?.[0]?.Description)
           : player.PlayerName?.[0]?.Description}
       </Typography>
-    </Box>
+    </Stack>
   );
 }
 
-function TeamSection({
-  starters,
-  bench,
-  compact
-}) {
+function TeamColumn({ starters, bench, teamName, flag, compact, accentColor }) {
   return (
-    <Box
-      sx={{
-        width: "100%"
-      }}
-    >
-      <Box
+    <Stack sx={{ flex: 1, minWidth: 0 }}>
+      <Stack alignItems="center" spacing={0.5} sx={{ mb: 1.5 }}>
+        {flag && (
+          <Box
+            component="img"
+            src={flag}
+            alt={teamName}
+            sx={{ width: 40, height: 28, borderRadius: 0.5, objectFit: "contain" }}
+          />
+        )}
+        <Typography variant="caption" sx={{ fontWeight: 700, fontSize: "0.78rem", textAlign: "center", lineHeight: 1.1 }}>
+          {teamName}
+        </Typography>
+      </Stack>
+
+      <Chip
+        label={`Titulares (${starters.length})`}
+        size="small"
         sx={{
-          p: 2,
-
-          borderRadius: 3,
-
-          background:
-            "linear-gradient(180deg,#ffffff 0%,#f8fafc 100%)",
-
-          boxShadow:
-            "inset 0 0 0 1px rgba(16,22,26,0.05)"
+          mb: 1,
+          height: 22,
+          fontSize: "0.68rem",
+          fontWeight: 700,
+          bgcolor: `${accentColor || "#19AE47"}15`,
+          color: accentColor || "success.main",
+          alignSelf: "flex-start"
         }}
-      >
-        <Chip
-          label={`Titulares (${starters.length})`}
-          color="success"
-          size="small"
-          sx={{ mb: 1.5 }}
-        />
+      />
+      <Stack spacing={0.25} sx={{ mb: 1.5 }}>
+        {starters.length > 0 ? (
+          starters.map((p) => (
+            <PlayerRow key={p.IdPlayer} player={p} compact={compact} accentColor={accentColor} />
+          ))
+        ) : (
+          <Typography variant="caption" color="text.secondary">Nenhum titular</Typography>
+        )}
+      </Stack>
 
-        <Stack spacing={0.5}>
-          {starters.length > 0 ? (
-            starters.map((player) => (
-              <PlayerRow
-                key={player.IdPlayer}
-                player={player}
-                compact={compact}
-              />
-            ))
-          ) : (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-            >
-              Nenhum titular registrado
-            </Typography>
-          )}
-        </Stack>
+      <Divider sx={{ my: 1 }} />
 
-        <Divider sx={{ my: 2 }} />
-
-        <Chip
-          label={`Reservas (${bench.length})`}
-          size="small"
-          sx={{ mb: 1.5 }}
-        />
-
-        <Stack spacing={0.5}>
-          {bench.length > 0 ? (
-            bench.map((player) => (
-              <PlayerRow
-                key={player.IdPlayer}
-                player={player}
-                compact={compact}
-              />
-            ))
-          ) : (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-            >
-              Nenhuma reserva registrada
-            </Typography>
-          )}
-        </Stack>
-      </Box>
-    </Box>
+      <Chip
+        label={`Reservas (${bench.length})`}
+        size="small"
+        sx={{
+          mb: 1,
+          height: 22,
+          fontSize: "0.68rem",
+          fontWeight: 700,
+          bgcolor: "grey.100",
+          color: "text.secondary",
+          alignSelf: "flex-start"
+        }}
+      />
+      <Stack spacing={0.25}>
+        {bench.length > 0 ? (
+          bench.map((p) => (
+            <PlayerRow key={p.IdPlayer} player={p} compact={compact} accentColor={accentColor} />
+          ))
+        ) : (
+          <Typography variant="caption" color="text.secondary">Nenhuma reserva</Typography>
+        )}
+      </Stack>
+    </Stack>
   );
 }
 
-export default function LineupsCard({
-  homeFlag,
-  awayFlag,
-  live
-}) {
+export default function LineupsCard({ homeFlag, awayFlag, homeTeam, awayTeam, live, colors }) {
   const theme = useTheme();
   const compact = useMediaQuery(theme.breakpoints.down("md"));
 
-  if (!live) {
-    return null;
-  }
+  if (!live) return null;
 
-  const homeTeam =
-    live.HomeTeam;
+  const homePlayers = live.HomeTeam?.Players || [];
+  const awayPlayers = live.AwayTeam?.Players || [];
 
-  const awayTeam =
-    live.AwayTeam;
-
-  const homePlayers =
-    homeTeam?.Players || [];
-
-  const awayPlayers =
-    awayTeam?.Players || [];
-
-  const homeStarters =
-    homePlayers.filter(
-      (player) => player.Status === 1
-    );
-
-  const awayStarters =
-    awayPlayers.filter(
-      (player) => player.Status === 1
-    );
-
-  const homeBench =
-    homePlayers.filter(
-      (player) => player.Status === 2
-    );
-
-  const awayBench =
-    awayPlayers.filter(
-      (player) => player.Status === 2
-    );
+  const homeStarters = homePlayers.filter((p) => p.Status === 1);
+  const homeBench = homePlayers.filter((p) => p.Status === 2);
+  const awayStarters = awayPlayers.filter((p) => p.Status === 1);
+  const awayBench = awayPlayers.filter((p) => p.Status === 2);
 
   return (
     <Card
       sx={{
-        mb: 3,
-        borderRadius: 1,
-
-        background:
-          "linear-gradient(180deg,#ffffff 0%,#f8fafc 100%)",
-
-        boxShadow:
-          "0 8px 24px rgba(0,0,0,0.06)"
+        borderRadius: 2,
+        border: "1px solid",
+        borderColor: "divider"
       }}
     >
-      <CardContent
-        sx={{
-          px: {
-            xs: 2,
-            md: 3
-          },
-
-          py: {
-            xs: 2,
-            md: 3
-          }
-        }}
-      >
-
-       <Box
-  sx={{
-    display: "flex",
-    justifyContent: "center",
-  alignItems: "center",
-
-    width: "100%",
-
-    mb: 3,
-
-    gap: {
-      xs: 1,
-      md: 5
-    }
-  }}
->
-<Stack
-  alignItems="center"
-  spacing={1}
-  sx={{
-    width: {
-      xs: 70,
-      sm: 100
-    },
-
-    flexShrink: 1
-  }}
->
-            {homeFlag && (
-              <Box
-                component="img"
-                src={homeFlag}
-                alt="Mandante"
-                sx={{
-                  width: 48,
-                  height: 34,
-                  borderRadius: 0.5
-                }}
-              />
-            )}
-
-       <Typography
-  sx={{
-    width: 48,           // mesma largura da bandeira
-    textAlign: "center",
-    lineHeight: 1.1,
-    fontWeight: 700,
-    fontSize: "1rem",
-
-    whiteSpace: "normal",
-    
-  }}
->
-  {homeTeam?.TeamName?.[0]?.Description}
-</Typography>
-          </Stack>
-
-          <Typography
-          sx={{
-              fontSize: "1.0rem",
-              fontWeight: 900,
-              color: "primary.main"
-            }}
-          >
-            Escalações
+      <CardContent sx={{ px: { xs: 2, sm: 3 }, py: 2, "&:last-child": { pb: 2 } }}>
+        <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 2 }}>
+          <MenuBookIcon sx={{ fontSize: 18, color: colors?.primary || "primary.main" }} />
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+            Escalacoes
           </Typography>
+        </Stack>
 
-          <Stack
-  alignItems="center"
-  spacing={1}
-  sx={{
-    width: {
-      xs: 70,
-      sm: 100
-    },
-    flexShrink: 1
-  }}
->
-            {awayFlag && (
-              <Box
-                component="img"
-                src={awayFlag}
-                alt="Visitante"
-                sx={{
-                  width: 48,
-                  height: 34,
-                  borderRadius: 0.5
-                }}
-              />
-            )}
-
-            <Typography
-  sx={{
-    width: 48,           // mesma largura da bandeira
-    textAlign: "center",
-    lineHeight: 1.1,
-    fontWeight: 700,
-    fontSize: "1rem",
-
-    whiteSpace: "normal",
-    
-  }}
->
-  {awayTeam?.TeamName?.[0]?.Description}
-</Typography>
-          </Stack>
-        </Box>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            width: "100%",
-            gap: {
-              xs: 2,
-              md: 3
-            }
-          }}
-        >
-          <Grid item xs={12} md={6}>
-            <TeamSection
-              starters={homeStarters}
-              bench={homeBench}
-              compact={compact}
-            />
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <TeamSection
-              starters={awayStarters}
-              bench={awayBench}
-              compact={compact}
-            />
-          </Grid>
-        </Box>
-
+        <Stack direction="row" spacing={compact ? 1 : 3} useFlexGap>
+          <TeamColumn
+            starters={homeStarters}
+            bench={homeBench}
+            teamName={homeTeam || live.HomeTeam?.TeamName?.[0]?.Description}
+            flag={homeFlag}
+            compact={compact}
+            accentColor={colors?.primary}
+          />
+          <TeamColumn
+            starters={awayStarters}
+            bench={awayBench}
+            teamName={awayTeam || live.AwayTeam?.TeamName?.[0]?.Description}
+            flag={awayFlag}
+            compact={compact}
+            accentColor={colors?.secondary}
+          />
+        </Stack>
       </CardContent>
     </Card>
   );
