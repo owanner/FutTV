@@ -280,13 +280,26 @@ async function applyManualAdjustments(compId, seasonId) {
 async function syncFootballDataStandings(comp) {
   const { footballDataLeagueId, footballDataSeason } = comp.config;
   const seasonId = String(footballDataSeason);
+  const apiKey = process.env.FOOTBALL_DATA_API_KEY;
+
+  if (!apiKey) {
+    console.error(`❌ [${comp.name}] FOOTBALL_DATA_API_KEY não configurada — pulando classificação`);
+    return;
+  }
+
   console.log(`📊 [${comp.name}] Sincronizando classificação...`);
 
   await prisma.standing.deleteMany({
     where: { competitionId: comp.id, seasonId }
   });
 
-  const matches = await footballDataApi.getMatches(footballDataLeagueId, footballDataSeason);
+  let matches;
+  try {
+    matches = await footballDataApi.getMatches(footballDataLeagueId, footballDataSeason);
+  } catch (err) {
+    console.error(`❌ [${comp.name}] Erro ao buscar jogos da football-data.org: ${err.message}`);
+    return;
+  }
 
   // Fetch manually adjusted match IDs so we can exclude them from API-based computation
   const manualMatches = await prisma.match.findMany({

@@ -45,8 +45,8 @@ export default function BottomNav() {
           icon={<Home />}
         />
         <BottomNavigationAction
-          value="/matches"
-          label="Jogos"
+          value="/competitions"
+          label="Competições"
           icon={<SportsSoccer />}
         />
         <BottomNavigationAction

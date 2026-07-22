@@ -6,7 +6,8 @@ import ErrorBoundary from "../components/ErrorBoundary/ErrorBoundary";
 
 // Lazy-loaded pages for code splitting
 const Home = lazy(() => import("../pages/Home/Home"));
-const Matches = lazy(() => import("../pages/Matches/Matches"));
+const Competitions = lazy(() => import("../pages/Competitions/Competitions"));
+const CompetitionDetail = lazy(() => import("../pages/CompetitionDetail/CompetitionDetail"));
 const Standings = lazy(() => import("../pages/Standings/Standings"));
 const Bracket = lazy(() => import("../pages/Bracket/Bracket"));
 const MatchDetails = lazy(() => import("../pages/MatchDetails/MatchDetails"));
@@ -37,10 +38,18 @@ export default function AppRoutes() {
               }
             />
             <Route
-              path="/matches"
+              path="/competitions"
               element={
                 <Suspense fallback={<PageLoader />}>
-                  <Matches />
+                  <Competitions />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/competitions/:id"
+              element={
+                <Suspense fallback={<PageLoader />}>
+                  <CompetitionDetail />
                 </Suspense>
               }
             />
