@@ -153,7 +153,7 @@ async function syncFootballDataCompetition(comp) {
 }
 
 async function syncCbfCompetition(comp) {
-  const { cbfCompetitionId, footballDataSeason } = comp.config;
+  const { cbfCompetitionId, footballDataLeagueId, footballDataSeason } = comp.config;
   const seasonId = String(footballDataSeason);
   console.log(`\n⚽ [${comp.name}] Buscando jogos...`);
 
@@ -176,6 +176,47 @@ async function syncCbfCompetition(comp) {
       update: matchData,
       create: { id: matchId, ...matchData }
     });
+  }
+
+  // Update scores from football-data.org (CBF returns 0 for all goals)
+  if (footballDataLeagueId && process.env.FOOTBALL_DATA_API_KEY) {
+    try {
+      const fbMatches = await footballDataApi.getMatches(footballDataLeagueId, footballDataSeason);
+      let updated = 0;
+
+      for (const fb of fbMatches) {
+        if (fb.status !== "FINISHED") continue;
+        const homeGoals = fb.score?.fullTime?.home;
+        const awayGoals = fb.score?.fullTime?.away;
+        if (homeGoals == null || awayGoals == null) continue;
+
+        const fbHome = fb.homeTeam?.name || "";
+        const fbAway = fb.awayTeam?.name || "";
+
+        // Find matching CBF match by team name overlap
+        const cbfMatch = matches.find((m) => {
+          const home = (m.mandante?.nome || "").toLowerCase();
+          const away = (m.visitante?.nome || "").toLowerCase();
+          return (
+            (fbHome.toLowerCase().includes(home.slice(0, 5)) || home.includes(fbHome.toLowerCase().slice(0, 5))) &&
+            (fbAway.toLowerCase().includes(away.slice(0, 5)) || away.includes(fbAway.toLowerCase().slice(0, 5)))
+          );
+        });
+
+        if (cbfMatch) {
+          const cbfId = `cbf_${cbfMatch.id_jogo}`;
+          await prisma.match.updateMany({
+            where: { id: cbfId, status: 0, OR: [{ homeScore: 0 }, { homeScore: null }] },
+            data: { homeScore: homeGoals, awayScore: awayGoals }
+          });
+          updated++;
+        }
+      }
+
+      if (updated > 0) console.log(`  📊 ${updated} placares atualizados via football-data.org`);
+    } catch (err) {
+      console.error(`  ⚠ Não foi possível atualizar placares via football-data.org: ${err.message}`);
+    }
   }
 }
 

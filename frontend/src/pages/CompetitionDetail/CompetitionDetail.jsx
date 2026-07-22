@@ -143,7 +143,7 @@ const STATUS_FILTERS = [
 ];
 
 function MatchesTab({ competitionId }) {
-  const { data, isLoading, error } = useMatches();
+  const { data, isLoading, error } = useMatches(competitionId);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
 
@@ -249,7 +249,7 @@ function MatchesTab({ competitionId }) {
 /* ─── Standings tab ─── */
 
 function StandingsTab({ competitionId, competition }) {
-  const { data, isLoading, error } = useStandings();
+  const { data, isLoading, error } = useStandings(competitionId);
   const isLibertadores = competitionId === "libertadores2026";
   const isBrasileirao = competitionId === "brasileirao2026";
   const comp = getCompetition(competitionId);

@@ -282,23 +282,27 @@ async function syncFootballDataStandings(comp) {
   const seasonId = String(footballDataSeason);
   const apiKey = process.env.FOOTBALL_DATA_API_KEY;
 
-  if (!apiKey) {
-    console.error(`❌ [${comp.name}] FOOTBALL_DATA_API_KEY não configurada — pulando classificação`);
-    return;
-  }
-
   console.log(`📊 [${comp.name}] Sincronizando classificação...`);
 
   await prisma.standing.deleteMany({
     where: { competitionId: comp.id, seasonId }
   });
 
-  let matches;
-  try {
-    matches = await footballDataApi.getMatches(footballDataLeagueId, footballDataSeason);
-  } catch (err) {
-    console.error(`❌ [${comp.name}] Erro ao buscar jogos da football-data.org: ${err.message}`);
-    return;
+  // Try football-data.org API first
+  let matches = null;
+  if (apiKey) {
+    try {
+      matches = await footballDataApi.getMatches(footballDataLeagueId, footballDataSeason);
+    } catch (err) {
+      console.error(`  ⚠ football-data.org API falhou: ${err.message} — tentando dados locais`);
+    }
+  } else {
+    console.log(`  ⚠ FOOTBALL_DATA_API_KEY não configurada — tentando dados locais`);
+  }
+
+  // If API failed or key missing, try computing from local DB matches
+  if (!matches || matches.length === 0) {
+    return await syncStandingsFromLocalMatches(comp, seasonId);
   }
 
   // Fetch manually adjusted match IDs so we can exclude them from API-based computation
@@ -343,6 +347,42 @@ async function syncFootballDataStandings(comp) {
 
   // Re-apply manually adjusted match results (W.O., score corrections)
   await applyManualAdjustments(comp.id, seasonId);
+}
+
+/**
+ * Compute standings from local DB matches (fallback when football-data.org API is unavailable).
+ * Works for Brasileirão where CBF match scores have been updated from football-data.org.
+ */
+async function syncStandingsFromLocalMatches(comp, seasonId) {
+  const dbMatches = await prisma.match.findMany({
+    where: { competitionId: comp.id, status: 0 },
+    select: { homeTeam: true, awayTeam: true, homeScore: true, awayScore: true, homeCode: true, awayCode: true, homeFlag: true, awayFlag: true }
+  });
+
+  if (dbMatches.length === 0) {
+    console.log(`  ⚠ Nenhum jogo finalizado encontrado no banco de dados local`);
+    return;
+  }
+
+  // Convert DB matches to the format expected by computeFlatStandingsFromMatches
+  const converted = dbMatches
+    .filter(m => m.homeScore != null && m.awayScore != null)
+    .map(m => ({
+      status: "FINISHED",
+      homeTeam: { id: m.homeTeam, name: m.homeTeam, tla: m.homeCode, crest: m.homeFlag },
+      awayTeam: { id: m.awayTeam, name: m.awayTeam, tla: m.awayCode, crest: m.awayFlag },
+      score: { fullTime: { home: m.homeScore, away: m.awayScore } }
+    }));
+
+  const sorted = computeFlatStandingsFromMatches(converted);
+  const rows = buildFlatStandingRowsFromMatches(comp, seasonId, sorted);
+
+  if (rows.length > 0) {
+    await prisma.standing.createMany({ data: rows });
+    console.log(`  ${rows.length} registros calculados do banco local`);
+  } else {
+    console.log(`  ⚠ Não foi possível calcular classificação (placares ausentes)`);
+  }
 }
 
 async function syncStandings() {
