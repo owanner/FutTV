@@ -91,4 +91,4 @@ function buildMatchData(match, compId, seasonId) {
   };
 }
 
-module.exports = { getMatches, buildMatchData, parseCbfDate, inferStatus };
+module.exports = { getMatches, buildMatchData, parseCbfDate };

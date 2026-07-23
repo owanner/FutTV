@@ -6,7 +6,7 @@ const CompetitionContext = createContext(null);
 
 /**
  * Provides competition state derived from URL param ?competition=.
- * Defaults to "wc2026" if not specified.
+ * Defaults to "brasileirao2026" if not specified.
  */
 export function CompetitionProvider({ children }) {
   const [searchParams, setSearchParams] = useSearchParams();

@@ -1,7 +1,20 @@
-/**
- * Position-based border color for standings rows.
- * Competition-aware: different competitions have different zone colors.
- */
+export const CARD_SX = {
+  borderRadius: 2,
+  border: "1px solid",
+  borderColor: "divider",
+  transition: "box-shadow .15s ease",
+  "&:hover": { boxShadow: "0 4px 12px rgba(0,0,0,0.06)" }
+};
+
+export function buildGroups(data) {
+  const groups = {};
+  (data || []).forEach((team) => {
+    if (!groups[team.groupName]) groups[team.groupName] = [];
+    groups[team.groupName].push(team);
+  });
+  return groups;
+}
+
 export function getPositionColor(position, competitionId) {
   if (competitionId === "brasileirao2026") {
     // Brasileirão zones

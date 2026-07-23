@@ -68,17 +68,14 @@ const competitions = [
   }
 ];
 
-function getCompetition(id) {
-  return competitions.find(c => c.id === id);
-}
-
 function getAllCompetitions() {
   return competitions.map(c => ({
     id: c.id,
     name: c.name,
+    shortName: c.shortName,
     slug: c.slug,
     colors: c.colors
   }));
 }
 
-module.exports = { competitions, getCompetition, getAllCompetitions };
+module.exports = { competitions, getAllCompetitions };

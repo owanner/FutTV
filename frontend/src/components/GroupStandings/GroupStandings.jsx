@@ -4,7 +4,7 @@ import useNav from "../../hooks/useNav";
 import { useCompetition } from "../../contexts/CompetitionContext";
 import { getCompetition } from "../../config/competitions";
 import { abbreviateTeamName } from "../../utils/teamUtils";
-import { getPositionColor, STAT_COLUMNS } from "../../utils/standingsUtils";
+import { getPositionColor, STAT_COLUMNS, CARD_SX } from "../../utils/standingsUtils";
 
 export default function GroupStandings({ groupName, teams }) {
   const navigate = useNav();
@@ -12,19 +12,11 @@ export default function GroupStandings({ groupName, teams }) {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { competitionId } = useCompetition();
   const comp = getCompetition(competitionId);
-  const teamLabel = comp?.teamLabel || "Seleção";
+  const teamLabel = comp?.teamLabel || "Time";
   const groupLetter = groupName.replace("Grupo ", "");
 
   return (
-    <Card
-      sx={{
-        borderRadius: 2,
-        border: "1px solid",
-        borderColor: "divider",
-        transition: "box-shadow .15s ease",
-        "&:hover": { boxShadow: "0 4px 12px rgba(0,0,0,0.06)" }
-      }}
-    >
+    <Card sx={CARD_SX}>
       <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
         <Typography
           variant="h6"

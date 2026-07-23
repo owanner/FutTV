@@ -310,16 +310,10 @@ function buildRowsFromOfficialStandings(comp, seasonId, officialStandings) {
 }
 
 function buildRowsFromMatchData(comp, seasonId, matches) {
-  const manualMatchIds = new Set();
-
   const matchesByGroup = {};
   for (const match of matches) {
     const groupName = typeof match.group === "string" ? match.group : match.group?.name;
     if (!groupName) continue;
-
-    const matchId = `fb_${match.id}`;
-    if (manualMatchIds.has(matchId)) continue;
-
     if (!matchesByGroup[groupName]) matchesByGroup[groupName] = [];
     matchesByGroup[groupName].push(match);
   }
@@ -328,8 +322,7 @@ function buildRowsFromMatchData(comp, seasonId, matches) {
     return buildGroupStandingRows(comp, seasonId, matchesByGroup);
   }
 
-  const nonManualMatches = matches.filter(m => !manualMatchIds.has(`fb_${m.id}`));
-  const sorted = computeFlatStandingsFromMatches(nonManualMatches);
+  const sorted = computeFlatStandingsFromMatches(matches);
   return buildFlatStandingRowsFromMatches(comp, seasonId, sorted);
 }
 

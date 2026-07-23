@@ -34,14 +34,4 @@ async function getStandings(leagueCode, season) {
   return response.data.standings || [];
 }
 
-/**
- * Fetch teams for a competition/season.
- */
-async function getTeams(leagueCode, season) {
-  const response = await api.get(`/competitions/${leagueCode}/teams`, {
-    params: { season }
-  });
-  return response.data.teams || [];
-}
-
-module.exports = { getMatches, getStandings, getTeams };
+module.exports = { getMatches, getStandings };

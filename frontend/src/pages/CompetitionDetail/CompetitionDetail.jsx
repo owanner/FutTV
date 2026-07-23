@@ -8,43 +8,27 @@ import {
   Card,
   CardActionArea,
   CardContent,
-  Avatar,
-  Divider,
   Tabs,
   Tab
 } from "@mui/material";
 
-import { getCompetition, getAllCompetitions } from "../../config/competitions";
+import { getCompetition } from "../../config/competitions";
 import { useMatches } from "../../hooks/useMatches";
 import { useStandings } from "../../hooks/useStandings";
 import { getStatus } from "../../utils/statusUtils";
 import { sortBroadcasts } from "../../utils/broadcasts";
 import { abbreviateTeamName } from "../../utils/teamUtils";
 import { normalizeText } from "../../utils/formatUtils";
-import {
-  getPositionColor,
-  STAT_COLUMNS,
-  BRASILEIRAO_ZONES
-} from "../../utils/standingsUtils";
+import { buildGroups, CARD_SX } from "../../utils/standingsUtils";
 import GroupStandings from "../../components/GroupStandings/GroupStandings";
+import FlatStandings from "../../components/FlatStandings/FlatStandings";
+import LegendChips from "../../components/LegendChips/LegendChips";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
-import PageHeader from "../../components/PageHeader/PageHeader";
 import { PageLoader, PageError } from "../../components/PageLoader/PageLoader";
 
 import useNav from "../../hooks/useNav";
 import dayjs from "dayjs";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-
-/* ─── Card style constant ─── */
-const CARD_SX = {
-  borderRadius: 2,
-  border: "1px solid",
-  borderColor: "divider",
-  transition: "box-shadow .15s ease",
-  "&:hover": { boxShadow: "0 4px 12px rgba(0,0,0,0.06)" }
-};
-
-/* ─── Compact match card ─── */
 
 function MatchRow({ match }) {
   const navigate = useNav();
@@ -134,8 +118,6 @@ function TeamMini({ flag, name }) {
   );
 }
 
-/* ─── Matches tab ─── */
-
 const STATUS_FILTERS = [
   { value: "", label: "Todos" },
   { value: "live", label: "Ao vivo", accent: "#DC2626" },
@@ -172,7 +154,6 @@ function MatchesTab({ competitionId }) {
 
   return (
     <Stack spacing={2}>
-      {/* Search + filter chips */}
       <Stack spacing={1.5}>
         <Box
           sx={{
@@ -206,7 +187,6 @@ function MatchesTab({ competitionId }) {
         </Box>
       </Stack>
 
-      {/* Live */}
       {live.length > 0 && (
         <Box>
           <SectionHeader label="Ao vivo" count={live.length} accent="#DC2626" />
@@ -216,7 +196,6 @@ function MatchesTab({ competitionId }) {
         </Box>
       )}
 
-      {/* Upcoming */}
       {upcoming.length > 0 && (
         <Box>
           <SectionHeader label="Próximos" count={upcoming.length} accent="#006A67" />
@@ -226,7 +205,6 @@ function MatchesTab({ competitionId }) {
         </Box>
       )}
 
-      {/* Finished */}
       {finished.length > 0 && (
         <Box>
           <SectionHeader label="Encerrados" count={finished.length} accent="#475569" />
@@ -247,12 +225,9 @@ function MatchesTab({ competitionId }) {
   );
 }
 
-/* ─── Standings tab ─── */
-
-function StandingsTab({ competitionId, competition }) {
+function StandingsTab({ competitionId }) {
   const { data, isLoading, error } = useStandings(competitionId);
   const isLibertadores = competitionId === "libertadores2026";
-  const isBrasileirao = competitionId === "brasileirao2026";
   const comp = getCompetition(competitionId);
   const teamLabel = comp?.teamLabel || "Time";
   const [view, setView] = useState(isLibertadores ? "groups" : "flat");
@@ -274,78 +249,27 @@ function StandingsTab({ competitionId, competition }) {
     );
   }
 
-  /* Legend chips */
-  const legendChips = isBrasileirao ? (
-    BRASILEIRAO_ZONES.map((zone) => (
-      <Chip
-        key={zone.label}
-        label={zone.label}
-        sx={{
-          bgcolor: zone.color,
-          color: zone.color === "#193375" || zone.color === "#e53935" ? "white" : "black",
-          fontSize: { xs: "0.70rem", sm: "0.80rem" }
-        }}
-      />
-    ))
-  ) : isLibertadores ? (
-    <>
-      <Chip color="success" label="Classificado" sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }} />
-      <Chip color="warning" label="Sulamericana" sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }} />
-      <Chip color="error" label="Eliminado" sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }} />
-    </>
-  ) : (
-    <>
-      <Chip color="success" label="Classificado" sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }} />
-      <Chip color="warning" label="Melhor 3º" sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }} />
-      <Chip color="error" label="Eliminado" sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }} />
-    </>
-  );
+  const groups = buildGroups(data);
 
-  /* Group data */
-  const groups = {};
-  data.forEach((team) => {
-    if (!groups[team.groupName]) groups[team.groupName] = [];
-    groups[team.groupName].push(team);
-  });
-
-  /* Libertadores view toggle chips */
   if (isLibertadores) {
     const sortedTeams = [...data].sort((a, b) => b.points - a.points);
 
     return (
       <Stack spacing={2}>
-        <Card sx={CARD_SX}>
-          <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
-            <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", justifyContent: "center" }}>
-              {legendChips}
-            </Stack>
-          </CardContent>
-        </Card>
+        <LegendChips competitionId={competitionId} />
 
         <Box sx={{ display: "flex", gap: 1 }}>
           <Chip
             label="Fase de Grupos"
             onClick={() => setView("groups")}
             variant={view === "groups" ? "filled" : "outlined"}
-            sx={{
-              fontWeight: 700,
-              ...(view === "groups"
-                ? { bgcolor: "primary.main", color: "#fff" }
-                : {}
-              )
-            }}
+            sx={{ fontWeight: 700, ...(view === "groups" ? { bgcolor: "primary.main", color: "#fff" } : {}) }}
           />
           <Chip
             label="Classificação"
             onClick={() => setView("flat")}
             variant={view === "flat" ? "filled" : "outlined"}
-            sx={{
-              fontWeight: 700,
-              ...(view === "flat"
-                ? { bgcolor: "primary.main", color: "#fff" }
-                : {}
-              )
-            }}
+            sx={{ fontWeight: 700, ...(view === "flat" ? { bgcolor: "primary.main", color: "#fff" } : {}) }}
           />
         </Box>
 
@@ -364,69 +288,15 @@ function StandingsTab({ competitionId, competition }) {
     );
   }
 
-  /* Default: Brasileirão or WC — just show groups */
   return (
     <Stack spacing={2}>
-      <Card sx={CARD_SX}>
-        <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
-          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", justifyContent: "center" }}>
-            {legendChips}
-          </Stack>
-        </CardContent>
-      </Card>
-
+      <LegendChips competitionId={competitionId} />
       {Object.entries(groups).map(([groupName, teams]) => (
         <GroupStandings key={groupName} groupName={groupName} teams={teams} />
       ))}
     </Stack>
   );
 }
-
-/* ─── Flat standings table ─── */
-
-function FlatStandings({ teams, teamLabel, competitionId }) {
-  return (
-    <Card sx={CARD_SX}>
-      <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
-        <Stack direction="row" alignItems="center" sx={{ mb: 1, px: 2, pt: 2, width: "100%" }}>
-          <Box sx={{ flex: 1, minWidth: 180, pr: 1, borderRight: "2px solid", borderColor: "rgba(0,0,0,0.08)" }}>
-            <Typography sx={{ fontSize: "0.90rem", fontWeight: 700, color: "primary.main" }} variant="caption">
-              {teamLabel}
-            </Typography>
-          </Box>
-          {STAT_COLUMNS.map((col) => (
-            <Box key={col.key} sx={{ width: 48, display: "flex", justifyContent: "center" }}>
-              <Typography variant="caption" fontWeight={700}>{col.label}</Typography>
-            </Box>
-          ))}
-        </Stack>
-        <Divider sx={{ mx: 2 }} />
-        {teams.map((team) => (
-          <Stack key={team.teamId} direction="row" sx={{ width: "100%", py: 1, px: 2, borderLeft: `4px solid ${getPositionColor(team.position, competitionId)}` }}>
-            <Stack direction="row" spacing={0.75} alignItems="center" sx={{ flex: 1, minWidth: 180, ml: 1, pr: 1, borderRight: "2px solid", borderColor: "rgba(0,0,0,0.08)" }}>
-              <Typography variant="body2" sx={{ fontSize: "0.75rem", fontWeight: 700, color: "text.secondary", minWidth: 18 }}>
-                {team.position}
-              </Typography>
-              <Avatar src={team.flag} alt={team.teamName} sx={{ width: 20, height: 20, flexShrink: 0 }} />
-              <Typography variant="body2" sx={{ fontSize: "0.85rem", fontWeight: 500 }}>
-                {team.teamName}
-              </Typography>
-            </Stack>
-            {STAT_COLUMNS.map((col) => (
-              <Box key={col.key} sx={{ width: 48, display: "flex", justifyContent: "center" }}>
-                <Typography textAlign="center" fontWeight={col.bold ? 700 : col.key === "goalDifference" ? 600 : 400}>
-                  {col.format ? col.format(team[col.key]) : team[col.key]}
-                </Typography>
-              </Box>
-            ))}
-          </Stack>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-/* ─── Main page ─── */
 
 export default function CompetitionDetail() {
   const { id } = useParams();
@@ -446,7 +316,6 @@ export default function CompetitionDetail() {
 
   return (
     <Stack spacing={2}>
-      {/* Back arrow + Header */}
       <Stack direction="row" alignItems="center" spacing={1}>
         <Box
           onClick={() => navigate("/competitions")}
@@ -473,7 +342,6 @@ export default function CompetitionDetail() {
         </Typography>
       </Stack>
 
-      {/* Tabs */}
       <Tabs
         value={tab}
         onChange={(_, v) => setTab(v)}
@@ -489,9 +357,8 @@ export default function CompetitionDetail() {
         <Tab label="Classificação" />
       </Tabs>
 
-      {/* Tab content */}
       {tab === 0 && <MatchesTab competitionId={id} />}
-      {tab === 1 && <StandingsTab competitionId={id} competition={competition} />}
+      {tab === 1 && <StandingsTab competitionId={id} />}
     </Stack>
   );
 }
