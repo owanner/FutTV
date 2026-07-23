@@ -38,7 +38,7 @@ function parseCbfDate(dateStr, timeStr) {
   const [day, month, year] = parts;
   const timePart = time || "00:00";
 
-  return new Date(`${year}-${month}-${day}T${timePart}:00`);
+  return new Date(`${year}-${month}-${day}T${timePart}:00-03:00`);
 }
 
 /**
@@ -80,6 +80,7 @@ function buildMatchData(match, compId, seasonId) {
     homeCode: null,
     awayCode: null,
     date: parseCbfDate(match.data, match.hora),
+    round: match.rodada ? parseInt(match.rodada) || null : null,
     stadium: match.local || null,
     city: null,
     referee: null,

@@ -38,6 +38,8 @@ model Match {
 
   date DateTime
 
+  round Int?
+
   stadium String?
 
   city String?

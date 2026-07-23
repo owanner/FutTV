@@ -8,6 +8,7 @@ const competitions = [
   {
     id: "brasileirao2026",
     name: "Campeonato Brasileiro Série A 2026",
+    shortName: "Brasileirão",
     slug: "brasileirao",
     apiProvider: "cbf",
     config: {
@@ -27,6 +28,7 @@ const competitions = [
   {
     id: "libertadores2026",
     name: "Copa Libertadores 2026",
+    shortName: "Libertadores",
     slug: "libertadores",
     apiProvider: "football-data",
     config: {
@@ -47,6 +49,7 @@ const competitions = [
   {
     id: "wc2026",
     name: "Copa do Mundo 2026",
+    shortName: "Copa 2026",
     slug: "world-cup",
     apiProvider: "fifa",
     config: {

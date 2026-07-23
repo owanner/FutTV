@@ -91,17 +91,20 @@ router.get("/", async (req, res) => {
  * Build a lookup from competitionId → competition metadata (name, colors, slug).
  */
 const compMeta = Object.fromEntries(
-  competitions.map(c => [c.id, { name: c.name, slug: c.slug, colors: c.colors }])
+  competitions.map(c => [c.id, { name: c.shortName || c.name, slug: c.slug, colors: c.colors }])
 );
 
 /**
  * GET /home/all
  *
- * Returns a unified feed of live, upcoming (next 5 days), and recent (last 2 days)
+ * Returns a unified feed of live, upcoming, and recent
  * matches across all competitions, each enriched with competition metadata.
  *
+ * Upcoming matches are grouped by round: for each competition,
+ * shows the current round (first round with unfinished matches) and the next round.
+ *
  * Query params:
- *   ?competition=wc2026        — optional, filter to a single competition
+ *   ?competitionId=wc2026        — optional, filter to a single competition
  *   ?status=live|upcoming|recent|all  — optional, default "all"
  */
 router.get("/all", async (req, res) => {
@@ -110,38 +113,69 @@ router.get("/all", async (req, res) => {
     const compId = req.query.competitionId || null;
     const statusFilter = req.query.status || "all";
 
+    const compWhere = compId ? { competitionId: compId } : {};
+
     const fetches = [];
 
+    // Live matches
     if (statusFilter === "all" || statusFilter === "live") {
       fetches.push(
         prisma.match.findMany({
-          where: {
-            competitionId: compId || undefined,
-            status: 3
-          },
+          where: { ...compWhere, status: 3 },
           include: { broadcasts: true }
         }).then(matches => matches.map(m => ({ ...m, _feedSection: "live" })))
       );
     }
 
+    // Upcoming: current round + next round per competition
     if (statusFilter === "all" || statusFilter === "upcoming") {
-      const fiveDays = new Date(now);
-      fiveDays.setDate(fiveDays.getDate() + 5);
-      const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
-
       fetches.push(
-        prisma.match.findMany({
-          where: {
-            competitionId: compId || undefined,
-            status: { notIn: [0, 3, 4] },
-            date: { gte: threeHoursAgo, lte: fiveDays }
-          },
-          include: { broadcasts: true },
-          orderBy: { date: "asc" }
-        }).then(matches => matches.map(m => ({ ...m, _feedSection: "upcoming" })))
+        (async () => {
+          const upcomingMatches = await prisma.match.findMany({
+            where: {
+              ...compWhere,
+              status: { notIn: [0, 3, 4] },
+              date: { gte: now }
+            },
+            include: { broadcasts: true },
+            orderBy: { date: "asc" }
+          });
+
+          const compIds = [...new Set(upcomingMatches.map(m => m.competitionId))];
+          const roundMatches = [];
+
+          for (const cId of compIds) {
+            const compUpcoming = upcomingMatches.filter(m => m.competitionId === cId);
+
+            const roundsWithUpcoming = [...new Set(compUpcoming.map(m => m.round).filter(Boolean))].sort((a, b) => a - b);
+
+            if (roundsWithUpcoming.length === 0) {
+              roundMatches.push(...compUpcoming);
+              continue;
+            }
+
+            const currentRound = roundsWithUpcoming[0];
+            const nextRound = currentRound + 1;
+
+            const allCompMatches = await prisma.match.findMany({
+              where: {
+                competitionId: cId,
+                round: { in: [currentRound, nextRound] },
+                status: { not: 4 }
+              },
+              include: { broadcasts: true },
+              orderBy: { date: "asc" }
+            });
+
+            roundMatches.push(...allCompMatches);
+          }
+
+          return roundMatches.map(m => ({ ...m, _feedSection: "upcoming" }));
+        })()
       );
     }
 
+    // Recent results
     if (statusFilter === "all" || statusFilter === "recent") {
       const twoDaysAgo = new Date(now);
       twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
@@ -149,7 +183,7 @@ router.get("/all", async (req, res) => {
       fetches.push(
         prisma.match.findMany({
           where: {
-            competitionId: compId || undefined,
+            ...compWhere,
             status: 0,
             date: { gte: twoDaysAgo, lte: now }
           },
@@ -174,11 +208,18 @@ router.get("/all", async (req, res) => {
 
     const byDate = [...enriched].sort((a, b) => new Date(a.date) - new Date(b.date));
 
+    const live = byDate.filter(m => m._feedSection === "live");
+    const upcoming = byDate.filter(m => m._feedSection === "upcoming");
+    const recent = byDate.filter(m => m._feedSection === "recent");
+
+    const hasNoMoreRounds = live.length === 0 && upcoming.length === 0 && recent.length > 0;
+
     res.json({
       generatedAt: new Date(),
-      live: byDate.filter(m => m._feedSection === "live"),
-      upcoming: byDate.filter(m => m._feedSection === "upcoming"),
-      recent: byDate.filter(m => m._feedSection === "recent")
+      live,
+      upcoming,
+      recent,
+      hasNoMoreRounds
     });
   } catch (error) {
     console.error(error);

@@ -314,11 +314,9 @@ async function syncFootballDataStandings(comp) {
 
   const matchesByGroup = {};
   for (const match of matches) {
-    if (match.stage !== "GROUP_STAGE") continue;
     const groupName = typeof match.group === "string" ? match.group : match.group?.name;
     if (!groupName) continue;
 
-    // Skip manually adjusted matches — they'll be re-applied below
     const matchId = `fb_${match.id}`;
     if (manualMatchIds.has(matchId)) {
       console.log(`  ⏭ Pulando ${matchId} do cálculo (ajuste manual)`);
@@ -359,6 +357,10 @@ async function syncStandingsFromLocalMatches(comp, seasonId) {
     select: { homeTeam: true, awayTeam: true, homeScore: true, awayScore: true, homeCode: true, awayCode: true, homeFlag: true, awayFlag: true }
   });
 
+  await prisma.standing.deleteMany({
+    where: { competitionId: comp.id, seasonId }
+  });
+
   if (dbMatches.length === 0) {
     console.log(`  ⚠ Nenhum jogo finalizado encontrado no banco de dados local`);
     return;
@@ -390,6 +392,8 @@ async function syncStandings() {
     try {
       if (comp.apiProvider === "fifa") {
         await syncFifaStandings(comp);
+      } else if (comp.apiProvider === "cbf") {
+        await syncStandingsFromLocalMatches(comp, String(comp.config.footballDataSeason));
       } else if (comp.apiProvider === "football-data" || comp.config.footballDataLeagueId) {
         await syncFootballDataStandings(comp);
       }

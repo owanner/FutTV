@@ -364,6 +364,7 @@ export default function Home() {
   const live = data?.live || [];
   const upcoming = data?.upcoming || [];
   const recent = data?.recent || [];
+  const hasNoMoreRounds = data?.hasNoMoreRounds || false;
 
   const featured = live[0] || upcoming[0] || null;
 
@@ -442,13 +443,17 @@ export default function Home() {
           {live.length === 0 && upcoming.length === 0 && recent.length === 0 && (
             <Box sx={{ py: 8, textAlign: "center" }}>
               <Typography variant="h6" sx={{ fontWeight: 700, color: "text.secondary" }}>
-                Nenhum jogo encontrado
+                {hasNoMoreRounds
+                  ? "O evento não possui mais jogos a acontecer"
+                  : "Nenhum jogo encontrado"}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                {filterComp !== ALL_ID
-                  ? "Tente trocar de competição ou volte mais tarde."
-                  : "Volte mais tarde para ver os jogos."}
-              </Typography>
+              {!hasNoMoreRounds && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {filterComp !== ALL_ID
+                    ? "Tente trocar de competição ou volte mais tarde."
+                    : "Volte mais tarde para ver os jogos."}
+                </Typography>
+              )}
             </Box>
           )}
 
