@@ -1,8 +1,5 @@
 /**
  * Fut-TV API — Main entry point.
- *
- * Sets up Express, registers routes, starts cron jobs,
- * and handles graceful shutdown.
  */
 
 require("dotenv").config();
@@ -13,13 +10,11 @@ const cron = require("node-cron");
 
 const prisma = require("./database/prisma");
 
-// Cron jobs
 const syncMatches = require("./cron/syncMatches");
 const syncStandings = require("./cron/syncStandings");
 const syncLibertadoresBroadcasts = require("./cron/syncLibertadoresBroadcasts");
 const syncBrasileiraoBroadcasts = require("./cron/syncBrasileiraoBroadcasts");
 
-// Routes
 const competitionsRoutes = require("./routes/competitions");
 const matchesRoutes = require("./routes/matches");
 const standingsRoutes = require("./routes/standings");
@@ -31,35 +26,50 @@ const groupRoutes = require("./routes/group");
 
 const app = express();
 
-app.use(cors());
+const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(",")
+  : true;
+
+app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json());
 
-/**
- * Run initial syncs on server start.
- */
-syncMatches();
-syncStandings();
-syncLibertadoresBroadcasts();
-syncBrasileiraoBroadcasts();
+function withGuard(fn) {
+  let running = false;
+  return async (...args) => {
+    if (running) {
+      console.log(`[cron] Skip — already running`);
+      return;
+    }
+    running = true;
+    try {
+      await fn(...args);
+    } catch (error) {
+      console.error(`[cron] Unhandled error:`, error.message);
+    } finally {
+      running = false;
+    }
+  };
+}
 
-/**
- * Schedule recurring syncs.
- */
-cron.schedule("*/5 * * * *", syncMatches);
-cron.schedule("*/15 * * * *", syncStandings);
-cron.schedule("*/30 * * * *", syncLibertadoresBroadcasts);
-cron.schedule("*/30 * * * *", syncBrasileiraoBroadcasts);
+const guardedSyncMatches = withGuard(syncMatches);
+const guardedSyncStandings = withGuard(syncStandings);
+const guardedSyncLibertadoresBroadcasts = withGuard(syncLibertadoresBroadcasts);
+const guardedSyncBrasileiraoBroadcasts = withGuard(syncBrasileiraoBroadcasts);
 
-/**
- * Health check endpoint.
- */
+guardedSyncMatches();
+guardedSyncStandings();
+guardedSyncLibertadoresBroadcasts();
+guardedSyncBrasileiraoBroadcasts();
+
+cron.schedule("*/5 * * * *", guardedSyncMatches);
+cron.schedule("4-59/15 * * * *", guardedSyncStandings);
+cron.schedule("9-59/30 * * * *", guardedSyncLibertadoresBroadcasts);
+cron.schedule("19-49/30 * * * *", guardedSyncBrasileiraoBroadcasts);
+
 app.get("/", (req, res) => {
   res.json({ app: "Fut-TV", status: "online" });
 });
 
-/**
- * API routes.
- */
 app.use("/competitions", competitionsRoutes);
 app.use("/home", homeRoutes);
 app.use("/matches", matchesRoutes);
@@ -69,33 +79,21 @@ app.use("/search", searchRoutes);
 app.use("/teams", teamsRoutes);
 app.use("/group", groupRoutes);
 
-/**
- * 404 handler.
- */
 app.use((req, res) => {
   res.status(404).json({ error: "Rota não encontrada" });
 });
 
-/**
- * Global error handler.
- */
 app.use((err, req, res, next) => {
   console.error("❌ Erro não tratado:", err.message);
   res.status(500).json({ error: "Erro interno do servidor" });
 });
 
-/**
- * Start server.
- */
 const PORT = process.env.PORT || 3000;
 
 const server = app.listen(PORT, () => {
   console.log(`🚀 Fut-TV API iniciada na porta ${PORT}`);
 });
 
-/**
- * Graceful shutdown.
- */
 async function shutdown(signal) {
   console.log(`\n${signal} recebido. Encerrando...`);
   server.close(async () => {

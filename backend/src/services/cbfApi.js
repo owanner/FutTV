@@ -69,7 +69,7 @@ function buildMatchData(match, compId, seasonId) {
   return {
     competitionId: compId,
     seasonId,
-    stageId: "",
+    stageId: null,
     groupId: null,
     groupName: null,
     stageName: match.campeonato?.nome_categoria || null,
@@ -91,4 +91,4 @@ function buildMatchData(match, compId, seasonId) {
   };
 }
 
-module.exports = { getMatches, buildMatchData, parseCbfDate };
+module.exports = { getMatches, buildMatchData };

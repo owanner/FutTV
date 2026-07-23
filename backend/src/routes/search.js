@@ -2,18 +2,12 @@
  * Search route.
  *
  * GET /search?q=brasil&competitionId=wc2026
- *
- * Searches teams, matches, and groups.
  */
 
 const express = require("express");
 const router = express.Router();
 const prisma = require("../database/prisma");
-
-function competitionFilter(req) {
-  const competitionId = req.query.competitionId;
-  return competitionId ? { competitionId } : {};
-}
+const { competitionFilter } = require("../utils/competitionFilter");
 
 router.get("/", async (req, res) => {
   try {
@@ -24,39 +18,40 @@ router.get("/", async (req, res) => {
     }
 
     const compFilter = competitionFilter(req);
+    const trimmed = query.trim();
 
-    const teams = await prisma.standing.findMany({
-      where: {
-        OR: [
-          { teamName: { contains: query.trim() } },
-          { teamCode: { contains: query.toUpperCase() } }
-        ],
-        ...compFilter
-      },
-      orderBy: { teamName: "asc" }
-    });
-
-    const matches = await prisma.match.findMany({
-      where: {
-        OR: [
-          { homeTeam: { contains: query.trim() } },
-          { awayTeam: { contains: query.trim() } },
-          { groupName: { contains: query.trim() } },
-          { stageName: { contains: query.trim() } }
-        ],
-        ...compFilter
-      },
-      include: { broadcasts: true },
-      orderBy: { date: "asc" }
-    });
-
-    const groups = await prisma.standing.findMany({
-      where: {
-        groupName: { contains: query.trim() },
-        ...compFilter
-      },
-      orderBy: [{ groupName: "asc" }, { position: "asc" }]
-    });
+    const [teams, matches, groups] = await Promise.all([
+      prisma.standing.findMany({
+        where: {
+          OR: [
+            { teamName: { contains: trimmed } },
+            { teamCode: { contains: query.toUpperCase() } }
+          ],
+          ...compFilter
+        },
+        orderBy: { teamName: "asc" }
+      }),
+      prisma.match.findMany({
+        where: {
+          OR: [
+            { homeTeam: { contains: trimmed } },
+            { awayTeam: { contains: trimmed } },
+            { groupName: { contains: trimmed } },
+            { stageName: { contains: trimmed } }
+          ],
+          ...compFilter
+        },
+        include: { broadcasts: true },
+        orderBy: { date: "asc" }
+      }),
+      prisma.standing.findMany({
+        where: {
+          groupName: { contains: trimmed },
+          ...compFilter
+        },
+        orderBy: [{ groupName: "asc" }, { position: "asc" }]
+      })
+    ]);
 
     res.json({ query, teams, matches, groups });
   } catch (error) {

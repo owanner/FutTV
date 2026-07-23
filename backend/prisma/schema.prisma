@@ -8,134 +8,80 @@ generator client {
 }
 
 model Match {
+  id              String   @id
+  competitionId   String
+  seasonId        String
+  stageId         String?
+  groupId         String?
+  groupName       String?
+  stageName       String?
+  homeTeam        String?
+  homeFlag        String?
+  awayTeam        String?
+  awayFlag        String?
+  homeCode        String?
+  awayCode        String?
+  date            DateTime
+  round           Int?
+  stadium         String?
+  city            String?
+  referee         String?
+  attendance      String?
+  status          Int
+  homeScore       Int?
+  awayScore       Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+  manuallyAdjusted Boolean  @default(false)
+  broadcasts      Broadcast[]
 
-  // ID oficial FIFA
-  id String @id
-
-  competitionId String
-
-  seasonId String
-
-  stageId String
-
-  groupId String?
-
-  groupName String?
-
-  stageName String?
-
-  homeTeam String?
-
-  homeFlag String?
-
-  awayTeam String?
-
-  awayFlag String?
-
-  homeCode String?
-
-  awayCode String?
-
-  date DateTime
-
-  round Int?
-
-  stadium String?
-
-  city String?
-
-  referee String?
-
-  attendance String?
-
-  status Int
-
-  homeScore Int?
-
-  awayScore Int?
-
-  createdAt DateTime @default(now())
-
-  manuallyAdjusted Boolean @default(false)
-
-  broadcasts Broadcast[]
+  @@index([competitionId, status])
+  @@index([competitionId, date])
+  @@index([competitionId, groupName])
+  @@index([status])
+  @@index([date])
+  @@index([homeCode])
+  @@index([awayCode])
+  @@index([manuallyAdjusted])
 }
 
 model Broadcast {
-
-  id Int @id @default(autoincrement())
-
-  matchId String
-
+  id        Int    @id @default(autoincrement())
+  matchId   String
   channelId String?
+  name      String
+  logo      String?
+  url       String?
+  language  String?
+  match     Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
-  name String
-
-  logo String?
-
-  url String?
-
-  language String?
-
-  match Match @relation(fields: [matchId], references: [id])
+  @@index([matchId])
 }
 
 model Standing {
-
-  id Int @id @default(autoincrement())
-
+  id            Int    @id @default(autoincrement())
   competitionId String @default("wc2026")
-
-  seasonId String @default("285023")
-
-  groupId String
-
-  groupName String
-
-  teamId String
-
-  teamName String
-
-  teamCode String?
-
-  badge String?
-
-  position Int
-
-  played Int
-
-  wins Int
-
-  draws Int
-
-  losses Int
-
-  goalsFor Int
-
-  goalsAgainst Int
-
+  seasonId      String @default("285023")
+  groupId       String
+  groupName     String
+  teamId        String
+  teamName      String
+  teamCode      String?
+  badge         String?
+  position      Int
+  played        Int
+  wins          Int
+  draws         Int
+  losses        Int
+  goalsFor      Int
+  goalsAgainst  Int
   goalDifference Int
-
-  points Int
-
-  updatedAt DateTime @updatedAt
+  points        Int
+  updatedAt     DateTime @updatedAt
 
   @@unique([competitionId, seasonId, teamId])
-}
-
-model Stage {
-
-  id String @id
-
-  seasonId String
-
-  competitionId String
-
-  name String
-
-  sequence Int
-
-  startDate DateTime
-
-  endDate DateTime
+  @@index([competitionId, seasonId])
+  @@index([competitionId, groupName])
+  @@index([teamCode])
+  @@index([position])
 }

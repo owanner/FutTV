@@ -1,7 +1,5 @@
 /**
- * FIFA API SERVICE
- *
- * Centralizes all calls to the FIFA API.
+ * FIFA API service.
  * Functions accept a config object with competitionId, seasonId, groupStageId.
  */
 
@@ -40,17 +38,10 @@ async function getMatchesByStage(stageId, config = DEFAULT_CONFIG) {
 
 async function getAllMatches(config = DEFAULT_CONFIG) {
   const stages = await getStages(config);
-  let allMatches = [];
-
-  for (const stage of stages) {
-    const stageName = stage.Name?.[0]?.Description || "Sem nome";
-    console.log(`[FIFA] Buscando fase: ${stageName}`);
-    const matches = await getMatchesByStage(stage.IdStage, config);
-    console.log(`[FIFA]   ${matches.length} jogos encontrados`);
-    allMatches.push(...matches);
-  }
-
-  return allMatches;
+  const stageMatches = await Promise.all(
+    stages.map(stage => getMatchesByStage(stage.IdStage, config))
+  );
+  return stageMatches.flat();
 }
 
 async function getBroadcasts(seasonId, matchId) {
@@ -83,9 +74,6 @@ async function getLive(matchId) {
 }
 
 module.exports = {
-  DEFAULT_CONFIG,
-  getStages,
-  getMatchesByStage,
   getAllMatches,
   getBroadcasts,
   getStandings,

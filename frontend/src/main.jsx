@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider, CssBaseline } from "@mui/material";
@@ -13,7 +13,8 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 30 * 1000,
       retry: 2,
-      refetchOnWindowFocus: false
+      refetchOnWindowFocus: true,
+      refetchInterval: 60 * 1000
     }
   }
 });
@@ -24,7 +25,7 @@ const queryClient = new QueryClient({
  */
 function ThemedApp() {
   const { competition } = useCompetition();
-  const theme = createCompetitionTheme(competition);
+  const theme = useMemo(() => createCompetitionTheme(competition), [competition]);
 
   return (
     <ThemeProvider theme={theme}>

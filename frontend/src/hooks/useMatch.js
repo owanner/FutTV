@@ -5,9 +5,9 @@ import api from "../api/futtvApi";
 export function useMatch(id) {
   return useQuery({
     queryKey: ["match", id],
-    queryFn: async () => {
-      const response = await api.get(`/matches/${id}/details`);
-      return response.data;
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get(`/matches/${id}/details`, { signal });
+      return data;
     },
     enabled: !!id
   });

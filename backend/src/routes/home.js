@@ -1,76 +1,61 @@
 /**
  * Home routes.
  *
- * GET /home              — single-competition home data
- * GET /home/all          — unified cross-competition feed (live + upcoming + recent)
- *
- * The /all endpoint powers the unified home page, returning matches from
- * every competition sorted by date with competition metadata attached.
+ * GET /home     — single-competition home data
+ * GET /home/all — unified cross-competition feed (live + upcoming + recent)
  */
 
 const express = require("express");
 const router = express.Router();
 const prisma = require("../database/prisma");
 const { competitions } = require("../config/competitions");
+const { competitionFilter } = require("../utils/competitionFilter");
 const {
   startOfToday,
   endOfToday,
   startOfTomorrow,
   endOfTomorrow
 } = require("../utils/dateHelpers");
+const { STATUS } = require("../utils/matchStatus");
 
-function competitionFilter(req) {
-  const competitionId = req.query.competitionId;
-  return competitionId ? { competitionId } : {};
-}
-
-/**
- * Single-competition home data (unchanged).
- */
 router.get("/", async (req, res) => {
   try {
     const now = new Date();
     const compFilter = competitionFilter(req);
 
-    let featuredMatch = await prisma.match.findFirst({
-      where: { status: 3, ...compFilter },
-      include: { broadcasts: true }
-    });
+    const [liveMatches, todayMatches, todayResults, tomorrowMatches, groupLeaders] = await Promise.all([
+      prisma.match.findMany({
+        where: { status: STATUS.LIVE, ...compFilter },
+        include: { broadcasts: true }
+      }),
+      prisma.match.findMany({
+        where: { date: { gte: startOfToday(), lte: endOfToday() }, status: { not: STATUS.CANCELLED }, ...compFilter },
+        include: { broadcasts: true },
+        orderBy: { date: "asc" }
+      }),
+      prisma.match.findMany({
+        where: { status: STATUS.FINISHED, date: { gte: startOfToday(), lte: endOfToday() }, ...compFilter },
+        orderBy: { date: "desc" }
+      }),
+      prisma.match.findMany({
+        where: { date: { gte: startOfTomorrow(), lte: endOfTomorrow() }, status: { not: STATUS.CANCELLED }, ...compFilter },
+        include: { broadcasts: true },
+        orderBy: { date: "asc" }
+      }),
+      prisma.standing.findMany({
+        where: { position: 1, ...compFilter },
+        orderBy: { groupName: "asc" }
+      })
+    ]);
 
+    let featuredMatch = liveMatches[0] || null;
     if (!featuredMatch) {
       featuredMatch = await prisma.match.findFirst({
-        where: { status: { equals: 1, not: 4 }, date: { gte: now }, ...compFilter },
+        where: { status: STATUS.SCHEDULED, date: { gte: now }, ...compFilter },
         include: { broadcasts: true },
         orderBy: { date: "asc" }
       });
     }
-
-    const liveMatches = await prisma.match.findMany({
-      where: { status: 3, ...compFilter },
-      include: { broadcasts: true }
-    });
-
-    const todayMatches = await prisma.match.findMany({
-      where: { date: { gte: startOfToday(), lte: endOfToday() }, status: { not: 4 }, ...compFilter },
-      include: { broadcasts: true },
-      orderBy: { date: "asc" }
-    });
-
-    const todayResults = await prisma.match.findMany({
-      where: { status: 0, date: { gte: startOfToday(), lte: endOfToday() }, ...compFilter },
-      orderBy: { date: "desc" }
-    });
-
-    const tomorrowMatches = await prisma.match.findMany({
-      where: { date: { gte: startOfTomorrow(), lte: endOfTomorrow() }, status: { not: 4 }, ...compFilter },
-      include: { broadcasts: true },
-      orderBy: { date: "asc" }
-    });
-
-    const groupLeaders = await prisma.standing.findMany({
-      where: { position: 1, ...compFilter },
-      orderBy: { groupName: "asc" }
-    });
 
     res.json({
       generatedAt: new Date(),
@@ -87,53 +72,39 @@ router.get("/", async (req, res) => {
   }
 });
 
-/**
- * Build a lookup from competitionId → competition metadata (name, colors, slug).
- */
 const compMeta = Object.fromEntries(
   competitions.map(c => [c.id, { name: c.shortName || c.name, slug: c.slug, colors: c.colors }])
 );
 
-/**
- * GET /home/all
- *
- * Returns a unified feed of live, upcoming (next 7 days), and recent (last 2 days)
- * matches across all competitions, each enriched with competition metadata.
- *
- * Query params:
- *   ?competitionId=wc2026        — optional, filter to a single competition
- *   ?status=live|upcoming|recent|all  — optional, default "all"
- */
 router.get("/all", async (req, res) => {
   try {
     const now = new Date();
     const compId = req.query.competitionId || null;
     const statusFilter = req.query.status || "all";
-
     const compWhere = compId ? { competitionId: compId } : {};
+
+    const sevenDays = new Date(now);
+    sevenDays.setDate(sevenDays.getDate() + 7);
+    const twoDaysAgo = new Date(now);
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 
     const fetches = [];
 
-    // Live matches
     if (statusFilter === "all" || statusFilter === "live") {
       fetches.push(
         prisma.match.findMany({
-          where: { ...compWhere, status: 3 },
+          where: { ...compWhere, status: STATUS.LIVE },
           include: { broadcasts: true }
         }).then(matches => matches.map(m => ({ ...m, _feedSection: "live" })))
       );
     }
 
-    // Upcoming: next 7 days
     if (statusFilter === "all" || statusFilter === "upcoming") {
-      const sevenDays = new Date(now);
-      sevenDays.setDate(sevenDays.getDate() + 7);
-
       fetches.push(
         prisma.match.findMany({
           where: {
             ...compWhere,
-            status: { notIn: [0, 3, 4] },
+            status: STATUS.SCHEDULED,
             date: { gte: now, lte: sevenDays }
           },
           include: { broadcasts: true },
@@ -142,16 +113,12 @@ router.get("/all", async (req, res) => {
       );
     }
 
-    // Recent results
     if (statusFilter === "all" || statusFilter === "recent") {
-      const twoDaysAgo = new Date(now);
-      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-
       fetches.push(
         prisma.match.findMany({
           where: {
             ...compWhere,
-            status: 0,
+            status: STATUS.FINISHED,
             date: { gte: twoDaysAgo, lte: now }
           },
           include: { broadcasts: true },
@@ -174,11 +141,9 @@ router.get("/all", async (req, res) => {
     });
 
     const byDate = [...enriched].sort((a, b) => new Date(a.date) - new Date(b.date));
-
     const live = byDate.filter(m => m._feedSection === "live");
     const upcoming = byDate.filter(m => m._feedSection === "upcoming");
     const recent = byDate.filter(m => m._feedSection === "recent");
-
     const hasNoMoreRounds = live.length === 0 && upcoming.length === 0 && recent.length > 0;
 
     res.json({

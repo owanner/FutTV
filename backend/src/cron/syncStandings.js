@@ -7,6 +7,7 @@ const prisma = require("../database/prisma");
 const fifaApi = require("../services/fifaApi");
 const footballDataApi = require("../services/footballDataApi");
 const { competitions } = require("../config/competitions");
+const { STATUS } = require("../utils/matchStatus");
 
 async function syncFifaStandings(comp) {
   const config = comp.config;
@@ -52,7 +53,7 @@ const GROUP_LABELS = {
   GROUP_H: "Grupo H"
 };
 
-function computeGroupStandingsFromMatches(matches) {
+function computeStandingsFromMatches(matches, { assignPosition = false } = {}) {
   const stats = {};
 
   for (const match of matches) {
@@ -106,63 +107,10 @@ function computeGroupStandingsFromMatches(matches) {
     return b.goalsFor - a.goalsFor;
   });
 
-  sorted.forEach((entry, i) => { entry.position = i + 1; });
+  if (assignPosition) {
+    sorted.forEach((entry, i) => { entry.position = i + 1; });
+  }
   return sorted;
-}
-
-function computeFlatStandingsFromMatches(matches) {
-  const stats = {};
-
-  for (const match of matches) {
-    if (match.status !== "FINISHED") continue;
-    const home = match.homeTeam;
-    const away = match.awayTeam;
-    const homeGoals = match.score?.fullTime?.home ?? null;
-    const awayGoals = match.score?.fullTime?.away ?? null;
-    if (homeGoals === null || awayGoals === null) continue;
-
-    if (!stats[home.id]) {
-      stats[home.id] = { team: home, played: 0, won: 0, draw: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0 };
-    }
-    if (!stats[away.id]) {
-      stats[away.id] = { team: away, played: 0, won: 0, draw: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0 };
-    }
-
-    const h = stats[home.id];
-    const a = stats[away.id];
-
-    h.played++;
-    a.played++;
-    h.goalsFor += homeGoals;
-    h.goalsAgainst += awayGoals;
-    a.goalsFor += awayGoals;
-    a.goalsAgainst += homeGoals;
-
-    if (homeGoals > awayGoals) {
-      h.won++;
-      h.points += 3;
-      a.lost++;
-    } else if (homeGoals < awayGoals) {
-      a.won++;
-      a.points += 3;
-      h.lost++;
-    } else {
-      h.draw++;
-      a.draw++;
-      h.points += 1;
-      a.points += 1;
-    }
-  }
-
-  for (const id of Object.keys(stats)) {
-    stats[id].goalDifference = stats[id].goalsFor - stats[id].goalsAgainst;
-  }
-
-  return Object.values(stats).sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
-    return b.goalsFor - a.goalsFor;
-  });
 }
 
 function buildFlatStandingRowsFromMatches(comp, seasonId, sorted) {
@@ -196,7 +144,7 @@ function buildGroupStandingRows(comp, seasonId, matchesByGroup) {
   const rows = [];
   for (const [apiGroupName, groupMatches] of Object.entries(matchesByGroup)) {
     const displayName = GROUP_LABELS[apiGroupName] || apiGroupName;
-    const sorted = computeGroupStandingsFromMatches(groupMatches);
+    const sorted = computeStandingsFromMatches(groupMatches, { assignPosition: true });
 
     for (const entry of sorted) {
       const team = entry.team || {};
@@ -228,7 +176,7 @@ async function applyManualAdjustments(compId, seasonId) {
   const manualMatches = await prisma.match.findMany({
     where: {
       competitionId: compId,
-      status: 0,
+      status: STATUS.FINISHED,
       manuallyAdjusted: true,
       homeScore: { not: null },
       awayScore: { not: null }
@@ -322,7 +270,7 @@ function buildRowsFromMatchData(comp, seasonId, matches) {
     return buildGroupStandingRows(comp, seasonId, matchesByGroup);
   }
 
-  const sorted = computeFlatStandingsFromMatches(matches);
+  const sorted = computeStandingsFromMatches(matches);
   return buildFlatStandingRowsFromMatches(comp, seasonId, sorted);
 }
 
@@ -393,12 +341,8 @@ async function syncFootballDataStandings(comp) {
  */
 async function syncStandingsFromLocalMatches(comp, seasonId) {
   const dbMatches = await prisma.match.findMany({
-    where: { competitionId: comp.id, status: 0 },
+    where: { competitionId: comp.id, status: STATUS.FINISHED },
     select: { homeTeam: true, awayTeam: true, homeScore: true, awayScore: true, homeCode: true, awayCode: true, homeFlag: true, awayFlag: true }
-  });
-
-  await prisma.standing.deleteMany({
-    where: { competitionId: comp.id, seasonId }
   });
 
   if (dbMatches.length === 0) {
@@ -406,7 +350,6 @@ async function syncStandingsFromLocalMatches(comp, seasonId) {
     return;
   }
 
-  // Convert DB matches to the format expected by computeFlatStandingsFromMatches
   const converted = dbMatches
     .filter(m => m.homeScore != null && m.awayScore != null)
     .map(m => ({
@@ -416,15 +359,19 @@ async function syncStandingsFromLocalMatches(comp, seasonId) {
       score: { fullTime: { home: m.homeScore, away: m.awayScore } }
     }));
 
-  const sorted = computeFlatStandingsFromMatches(converted);
+  const sorted = computeStandingsFromMatches(converted);
   const rows = buildFlatStandingRowsFromMatches(comp, seasonId, sorted);
 
-  if (rows.length > 0) {
-    await prisma.standing.createMany({ data: rows });
-    console.log(`  ${rows.length} registros calculados do banco local`);
-  } else {
+  if (rows.length === 0) {
     console.log(`  ⚠ Não foi possível calcular classificação (placares ausentes)`);
+    return;
   }
+
+  await prisma.$transaction([
+    prisma.standing.deleteMany({ where: { competitionId: comp.id, seasonId } }),
+    prisma.standing.createMany({ data: rows })
+  ]);
+  console.log(`  ${rows.length} registros calculados do banco local`);
 }
 
 async function syncStandings() {

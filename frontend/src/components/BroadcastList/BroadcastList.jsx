@@ -33,7 +33,8 @@ export default function BroadcastList({ broadcasts, colors }) {
                   <Box
                     component="img"
                     src={channel.logo}
-                    alt=""
+                    alt={channel.name}
+                    loading="lazy"
                     sx={{ width: 16, height: 16, ml: 0.5 }}
                   />
                 ) : undefined
@@ -46,6 +47,7 @@ export default function BroadcastList({ broadcasts, colors }) {
               }
               href={channel.url || undefined}
               target={channel.url ? "_blank" : undefined}
+              rel={channel.url ? "noopener noreferrer" : undefined}
               clickable={!!channel.url}
               sx={{
                 height: 28,

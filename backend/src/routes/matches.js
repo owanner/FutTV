@@ -7,24 +7,19 @@
  * GET /matches/finished
  * GET /matches/:id
  * GET /matches/:id/details
- *
- * All list endpoints accept ?competitionId= query param.
  */
 
 const express = require("express");
 const router = express.Router();
 const prisma = require("../database/prisma");
 const fifaApi = require("../services/fifaApi");
-
-function competitionFilter(req) {
-  const competitionId = req.query.competitionId;
-  return competitionId ? { competitionId } : {};
-}
+const { competitionFilter } = require("../utils/competitionFilter");
+const { STATUS } = require("../utils/matchStatus");
 
 router.get("/", async (req, res) => {
   try {
     const matches = await prisma.match.findMany({
-      where: { status: { not: 4 }, ...competitionFilter(req) },
+      where: { status: { not: STATUS.CANCELLED }, ...competitionFilter(req) },
       include: { broadcasts: true },
       orderBy: { date: "asc" }
     });
@@ -38,7 +33,7 @@ router.get("/", async (req, res) => {
 router.get("/upcoming", async (req, res) => {
   try {
     const matches = await prisma.match.findMany({
-      where: { status: 1, ...competitionFilter(req) },
+      where: { status: STATUS.SCHEDULED, ...competitionFilter(req) },
       include: { broadcasts: true },
       orderBy: { date: "asc" }
     });
@@ -52,7 +47,7 @@ router.get("/upcoming", async (req, res) => {
 router.get("/live", async (req, res) => {
   try {
     const matches = await prisma.match.findMany({
-      where: { status: 3, ...competitionFilter(req) },
+      where: { status: STATUS.LIVE, ...competitionFilter(req) },
       include: { broadcasts: true }
     });
     res.json(matches);
@@ -65,7 +60,7 @@ router.get("/live", async (req, res) => {
 router.get("/finished", async (req, res) => {
   try {
     const matches = await prisma.match.findMany({
-      where: { status: 0, ...competitionFilter(req) },
+      where: { status: STATUS.FINISHED, ...competitionFilter(req) },
       include: { broadcasts: true },
       orderBy: { date: "desc" }
     });
@@ -78,10 +73,8 @@ router.get("/finished", async (req, res) => {
 
 router.get("/:id/details", async (req, res) => {
   try {
-    const matchId = req.params.id;
-
     const match = await prisma.match.findUnique({
-      where: { id: matchId },
+      where: { id: req.params.id },
       include: { broadcasts: true }
     });
 
@@ -89,22 +82,16 @@ router.get("/:id/details", async (req, res) => {
       return res.status(404).json({ error: "Partida não encontrada" });
     }
 
-    let timeline = null;
-    let live = null;
+    const [timelineResult, liveResult] = await Promise.allSettled([
+      fifaApi.getTimeline(req.params.id),
+      fifaApi.getLive(req.params.id)
+    ]);
 
-    try {
-      timeline = await fifaApi.getTimeline(matchId);
-    } catch {
-      timeline = null;
-    }
-
-    try {
-      live = await fifaApi.getLive(matchId);
-    } catch {
-      live = null;
-    }
-
-    res.json({ match, timeline, live });
+    res.json({
+      match,
+      timeline: timelineResult.status === "fulfilled" ? timelineResult.value : null,
+      live: liveResult.status === "fulfilled" ? liveResult.value : null
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erro ao buscar detalhes" });

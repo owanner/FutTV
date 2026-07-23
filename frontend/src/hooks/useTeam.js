@@ -7,9 +7,9 @@ export function useTeam(code) {
   const { competitionId } = useCompetition();
   return useQuery({
     queryKey: ["team", code, competitionId],
-    queryFn: async () => {
-      const response = await api.get(`/teams/${code}`, { params: { competitionId } });
-      return response.data;
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get(`/teams/${code}`, { params: { competitionId }, signal });
+      return data;
     },
     enabled: !!code
   });

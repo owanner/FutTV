@@ -11,11 +11,7 @@ const express = require("express");
 const router = express.Router();
 const prisma = require("../database/prisma");
 const formatStanding = require("../utils/formatStanding");
-
-function competitionFilter(req) {
-  const competitionId = req.query.competitionId;
-  return competitionId ? { competitionId } : {};
-}
+const { competitionFilter } = require("../utils/competitionFilter");
 
 router.get("/", async (req, res) => {
   try {

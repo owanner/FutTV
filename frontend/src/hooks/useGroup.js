@@ -7,9 +7,9 @@ export function useGroup(letter) {
   const { competitionId } = useCompetition();
   return useQuery({
     queryKey: ["group", letter, competitionId],
-    queryFn: async () => {
-      const response = await api.get(`/group/${letter}`, { params: { competitionId } });
-      return response.data;
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get(`/group/${letter}`, { params: { competitionId }, signal });
+      return data;
     },
     enabled: !!letter
   });

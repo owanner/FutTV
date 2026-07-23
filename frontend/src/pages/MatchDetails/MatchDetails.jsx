@@ -17,6 +17,7 @@ export default function MatchDetails() {
 
   if (isLoading) return <PageLoader />;
   if (error) return <PageError message="Erro ao carregar partida" />;
+  if (!data?.match) return <PageError message="Partida não encontrada" />;
 
   const match = data.match;
   const competition = getCompetition(match.competitionId);

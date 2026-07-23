@@ -8,11 +8,10 @@
 const express = require("express");
 const router = express.Router();
 const prisma = require("../database/prisma");
+const { competitionFilter } = require("../utils/competitionFilter");
+const { STATUS } = require("../utils/matchStatus");
 
-function competitionFilter(req) {
-  const competitionId = req.query.competitionId;
-  return competitionId ? { competitionId } : {};
-}
+const FIFA_FLAG_BASE = "https://api.fifa.com/api/v3/picture/flags-sq-4";
 
 router.get("/", async (req, res) => {
   try {
@@ -50,8 +49,8 @@ router.get("/:code", async (req, res) => {
     });
 
     const now = new Date();
-    const nextMatches = matches.filter(m => m.date > now && m.status === 1);
-    const finishedMatches = matches.filter(m => m.status === 0);
+    const nextMatches = matches.filter(m => m.date > now && m.status === STATUS.SCHEDULED);
+    const finishedMatches = matches.filter(m => m.status === STATUS.FINISHED);
 
     const status =
       standing.position <= 2 ? "qualified"
@@ -61,7 +60,7 @@ router.get("/:code", async (req, res) => {
     res.json({
       team: {
         ...standing,
-        flag: standing.badge || `https://api.fifa.com/api/v3/picture/flags-sq-4/${code}`,
+        flag: standing.badge || `${FIFA_FLAG_BASE}/${code}`,
         status
       },
       nextMatches,

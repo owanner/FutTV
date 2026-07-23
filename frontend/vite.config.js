@@ -11,9 +11,9 @@ export default defineConfig({
       manifest: {
         name: "Fut-TV",
         short_name: "FutTV",
-        description: "Acompanhe os jogos da Copa do Mundo 2026",
-        theme_color: "#0F766E",
-        background_color: "#F6FAF8",
+        description: "Brasileirão, Libertadores e Copa do Mundo 2026",
+        theme_color: "#19AE47",
+        background_color: "#FFFFFF",
         display: "standalone",
         icons: [
           {

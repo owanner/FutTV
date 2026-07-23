@@ -11,9 +11,9 @@ export function useMatches(overrideCompetitionId) {
   const competitionId = overrideCompetitionId || ctxId;
   return useQuery({
     queryKey: ["matches", competitionId],
-    queryFn: async () => {
-      const response = await api.get("/matches", { params: { competitionId } });
-      return response.data;
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get("/matches", { params: { competitionId }, signal });
+      return data;
     }
   });
 }
