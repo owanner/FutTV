@@ -366,9 +366,7 @@ export default function Home() {
   const recent = data?.recent || [];
   const hasNoMoreRounds = data?.hasNoMoreRounds || false;
 
-  const featured = live[0] || upcoming[0] || null;
-
-  const liveNoHero = featured ? live.filter((m) => m.id !== featured.id) : live;
+  const featuredUpcoming = live.length === 0 ? upcoming[0] : null;
 
   return (
     <Stack spacing={3} sx={{ pt: 0.5 }}>
@@ -457,25 +455,17 @@ export default function Home() {
             </Box>
           )}
 
-          {/* Hero — live or next upcoming */}
-          {featured && (
-            <HeroCard match={featured} />
+          {/* Hero — all live matches or next upcoming */}
+          {live.length > 0 && (
+            <Stack spacing={2} sx={{ mb: 1 }}>
+              {live.map((m) => (
+                <HeroCard key={m.id} match={m} />
+              ))}
+            </Stack>
           )}
 
-          {/* Live section */}
-          {liveNoHero.length > 0 && (
-            <Box>
-              <SectionHeader
-                label="Ao vivo"
-                count={liveNoHero.length}
-                accent="#DC2626"
-              />
-              <HorizontalScroll>
-                {liveNoHero.map((m) => (
-                  <CompactMatchRow key={m.id} match={m} />
-                ))}
-              </HorizontalScroll>
-            </Box>
+          {live.length === 0 && featuredUpcoming && (
+            <HeroCard match={featuredUpcoming} />
           )}
 
           {/* Upcoming */}

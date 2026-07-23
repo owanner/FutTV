@@ -6,11 +6,12 @@ import { getCompetition } from "../../config/competitions";
 import { abbreviateTeamName } from "../../utils/teamUtils";
 import { getPositionColor, STAT_COLUMNS, CARD_SX } from "../../utils/standingsUtils";
 
-export default function GroupStandings({ groupName, teams }) {
+export default function GroupStandings({ groupName, teams, competitionId: propCompetitionId }) {
   const navigate = useNav();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const { competitionId } = useCompetition();
+  const { competitionId: ctxCompetitionId } = useCompetition();
+  const competitionId = propCompetitionId || ctxCompetitionId;
   const comp = getCompetition(competitionId);
   const teamLabel = comp?.teamLabel || "Time";
   const groupLetter = groupName.replace("Grupo ", "");

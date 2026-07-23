@@ -82,7 +82,7 @@ export default function Standings() {
         {isLibertadores && view === "groups" && (
           <Stack spacing={2}>
             {Object.entries(groups).map(([groupName, teams]) => (
-              <GroupStandings key={groupName} groupName={groupName} teams={teams} />
+              <GroupStandings key={groupName} groupName={groupName} teams={teams} competitionId={competitionId} />
             ))}
           </Stack>
         )}
@@ -96,7 +96,7 @@ export default function Standings() {
         )}
 
         {!isLibertadores && Object.entries(groups).map(([groupName, teams]) => (
-          <GroupStandings key={groupName} groupName={groupName} teams={teams} />
+          <GroupStandings key={groupName} groupName={groupName} teams={teams} competitionId={competitionId} />
         ))}
       </Stack>
     </>

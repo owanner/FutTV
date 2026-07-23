@@ -276,7 +276,7 @@ function StandingsTab({ competitionId }) {
         {view === "groups" && (
           <Stack spacing={2}>
             {Object.entries(groups).map(([groupName, teams]) => (
-              <GroupStandings key={groupName} groupName={groupName} teams={teams} />
+              <GroupStandings key={groupName} groupName={groupName} teams={teams} competitionId={competitionId} />
             ))}
           </Stack>
         )}
@@ -292,7 +292,7 @@ function StandingsTab({ competitionId }) {
     <Stack spacing={2}>
       <LegendChips competitionId={competitionId} />
       {Object.entries(groups).map(([groupName, teams]) => (
-        <GroupStandings key={groupName} groupName={groupName} teams={teams} />
+        <GroupStandings key={groupName} groupName={groupName} teams={teams} competitionId={competitionId} />
       ))}
     </Stack>
   );

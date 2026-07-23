@@ -8,6 +8,7 @@ import {
 } from "@mui/material";
 import { useParams } from "react-router-dom";
 import { useGroup } from "../../hooks/useGroup";
+import { useCompetition } from "../../contexts/CompetitionContext";
 import GroupStandings from "../../components/GroupStandings/GroupStandings";
 import MatchCard from "../../components/MatchCard/MatchCard";
 import { PageLoader, PageError } from "../../components/PageLoader/PageLoader";
@@ -15,6 +16,7 @@ import { PageLoader, PageError } from "../../components/PageLoader/PageLoader";
 export default function GroupDetails() {
   const { letter } = useParams();
   const { data, isLoading, error } = useGroup(letter);
+  const { competitionId } = useCompetition();
 
   if (isLoading) {
     return <PageLoader />;
@@ -36,7 +38,7 @@ export default function GroupDetails() {
 
   return (
     <Stack spacing={3}>
-      <GroupStandings groupName={data.groupName} teams={data.standings} />
+      <GroupStandings groupName={data.groupName} teams={data.standings} competitionId={competitionId} />
 
       <Card>
         <CardContent>
