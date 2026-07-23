@@ -180,7 +180,7 @@ async function syncCbfCompetition(comp) {
     });
   }
 
-  // Update scores from football-data.org (CBF returns 0 for all goals)
+  // Update scores and status from football-data.org (CBF returns 0 for all goals)
   if (footballDataLeagueId && process.env.FOOTBALL_DATA_API_KEY) {
     try {
       const fbMatches = await footballDataApi.getMatches(footballDataLeagueId, footballDataSeason);
@@ -215,7 +215,36 @@ async function syncCbfCompetition(comp) {
         }
       }
 
+      // Update live/finished/scheduled status from football-data.org
+      let statusUpdated = 0;
+      for (const fb of fbMatches) {
+        const fbStatus = mapFbStatus(fb.status);
+        if (fbStatus === 1) continue;
+
+        const fbHome = fb.homeTeam?.name || "";
+        const fbAway = fb.awayTeam?.name || "";
+
+        const cbfMatch = matches.find((m) => {
+          const home = (m.mandante?.nome || "").toLowerCase();
+          const away = (m.visitante?.nome || "").toLowerCase();
+          return (
+            (fbHome.toLowerCase().includes(home.slice(0, 5)) || home.includes(fbHome.toLowerCase().slice(0, 5))) &&
+            (fbAway.toLowerCase().includes(away.slice(0, 5)) || away.includes(fbAway.toLowerCase().slice(0, 5)))
+          );
+        });
+
+        if (cbfMatch) {
+          const cbfId = `cbf_${cbfMatch.id_jogo}`;
+          await prisma.match.updateMany({
+            where: { id: cbfId, manuallyAdjusted: false },
+            data: { status: fbStatus }
+          });
+          statusUpdated++;
+        }
+      }
+
       if (updated > 0) console.log(`  📊 ${updated} placares atualizados via football-data.org`);
+      if (statusUpdated > 0) console.log(`  📊 ${statusUpdated} status atualizados via football-data.org`);
     } catch (err) {
       console.error(`  ⚠ Não foi possível atualizar placares via football-data.org: ${err.message}`);
     }
