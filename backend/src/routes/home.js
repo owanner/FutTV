@@ -97,11 +97,8 @@ const compMeta = Object.fromEntries(
 /**
  * GET /home/all
  *
- * Returns a unified feed of live, upcoming, and recent
+ * Returns a unified feed of live, upcoming (next 7 days), and recent (last 2 days)
  * matches across all competitions, each enriched with competition metadata.
- *
- * Upcoming matches are grouped by round: for each competition,
- * shows the current round (first round with unfinished matches) and the next round.
  *
  * Query params:
  *   ?competitionId=wc2026        — optional, filter to a single competition
@@ -127,51 +124,21 @@ router.get("/all", async (req, res) => {
       );
     }
 
-    // Upcoming: current round + next round per competition
+    // Upcoming: next 7 days
     if (statusFilter === "all" || statusFilter === "upcoming") {
+      const sevenDays = new Date(now);
+      sevenDays.setDate(sevenDays.getDate() + 7);
+
       fetches.push(
-        (async () => {
-          const upcomingMatches = await prisma.match.findMany({
-            where: {
-              ...compWhere,
-              status: { notIn: [0, 3, 4] },
-              date: { gte: now }
-            },
-            include: { broadcasts: true },
-            orderBy: { date: "asc" }
-          });
-
-          const compIds = [...new Set(upcomingMatches.map(m => m.competitionId))];
-          const roundMatches = [];
-
-          for (const cId of compIds) {
-            const compUpcoming = upcomingMatches.filter(m => m.competitionId === cId);
-
-            const roundsWithUpcoming = [...new Set(compUpcoming.map(m => m.round).filter(Boolean))].sort((a, b) => a - b);
-
-            if (roundsWithUpcoming.length === 0) {
-              roundMatches.push(...compUpcoming);
-              continue;
-            }
-
-            const currentRound = roundsWithUpcoming[0];
-            const nextRound = currentRound + 1;
-
-            const allCompMatches = await prisma.match.findMany({
-              where: {
-                competitionId: cId,
-                round: { in: [currentRound, nextRound] },
-                status: { not: 4 }
-              },
-              include: { broadcasts: true },
-              orderBy: { date: "asc" }
-            });
-
-            roundMatches.push(...allCompMatches);
-          }
-
-          return roundMatches.map(m => ({ ...m, _feedSection: "upcoming" }));
-        })()
+        prisma.match.findMany({
+          where: {
+            ...compWhere,
+            status: { notIn: [0, 3, 4] },
+            date: { gte: now, lte: sevenDays }
+          },
+          include: { broadcasts: true },
+          orderBy: { date: "asc" }
+        }).then(matches => matches.map(m => ({ ...m, _feedSection: "upcoming" })))
       );
     }
 

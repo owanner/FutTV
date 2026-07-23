@@ -277,6 +277,62 @@ async function applyManualAdjustments(compId, seasonId) {
   }
 }
 
+function buildRowsFromOfficialStandings(comp, seasonId, officialStandings) {
+  const rows = [];
+  for (const standing of officialStandings) {
+    const groupName = standing.group?.name || null;
+    const table = standing.table || [];
+
+    for (const entry of table) {
+      const team = entry.team || {};
+      rows.push({
+        competitionId: comp.id,
+        seasonId,
+        groupId: groupName || standing.type || "TOTAL",
+        groupName: groupName || standing.type || "Classificação",
+        teamId: String(team.id),
+        teamName: team.shortName || team.name || "Time desconhecido",
+        teamCode: team.tla || null,
+        badge: team.crest || null,
+        position: entry.position || 0,
+        played: entry.playedGames || 0,
+        wins: entry.won || 0,
+        draws: entry.draw || 0,
+        losses: entry.lost || 0,
+        goalsFor: entry.goalsFor || 0,
+        goalsAgainst: entry.goalsAgainst || 0,
+        goalDifference: entry.goalDifference || 0,
+        points: entry.points || 0
+      });
+    }
+  }
+  return rows;
+}
+
+function buildRowsFromMatchData(comp, seasonId, matches) {
+  const manualMatchIds = new Set();
+
+  const matchesByGroup = {};
+  for (const match of matches) {
+    const groupName = typeof match.group === "string" ? match.group : match.group?.name;
+    if (!groupName) continue;
+
+    const matchId = `fb_${match.id}`;
+    if (manualMatchIds.has(matchId)) continue;
+
+    if (!matchesByGroup[groupName]) matchesByGroup[groupName] = [];
+    matchesByGroup[groupName].push(match);
+  }
+
+  if (Object.keys(matchesByGroup).length > 0) {
+    return buildGroupStandingRows(comp, seasonId, matchesByGroup);
+  }
+
+  const nonManualMatches = matches.filter(m => !manualMatchIds.has(`fb_${m.id}`));
+  const sorted = computeFlatStandingsFromMatches(nonManualMatches);
+  return buildFlatStandingRowsFromMatches(comp, seasonId, sorted);
+}
+
 async function syncFootballDataStandings(comp) {
   const { footballDataLeagueId, footballDataSeason } = comp.config;
   const seasonId = String(footballDataSeason);
@@ -288,63 +344,54 @@ async function syncFootballDataStandings(comp) {
     where: { competitionId: comp.id, seasonId }
   });
 
-  // Try football-data.org API first
+  // Try football-data.org standings endpoint first (official standings)
+  let officialStandings = null;
+  if (apiKey) {
+    try {
+      const rawStandings = await footballDataApi.getStandings(footballDataLeagueId, footballDataSeason);
+      if (rawStandings && rawStandings.length > 0) {
+        officialStandings = rawStandings;
+      }
+    } catch (err) {
+      console.error(`  ⚠ football-data.org standings API falhou: ${err.message}`);
+    }
+  }
+
+  if (officialStandings) {
+    const rows = buildRowsFromOfficialStandings(comp, seasonId, officialStandings);
+    if (rows.length > 0) {
+      await prisma.standing.createMany({ data: rows });
+      console.log(`  ${rows.length} registros de classificação oficial criados`);
+      await applyManualAdjustments(comp.id, seasonId);
+      return;
+    }
+  }
+
+  console.log(`  ⚠ Classificação oficial indisponível — calculando a partir de jogos...`);
+
+  // Fallback: compute from football-data.org match data
   let matches = null;
   if (apiKey) {
     try {
       matches = await footballDataApi.getMatches(footballDataLeagueId, footballDataSeason);
     } catch (err) {
-      console.error(`  ⚠ football-data.org API falhou: ${err.message} — tentando dados locais`);
+      console.error(`  ⚠ football-data.org matches API falhou: ${err.message} — tentando dados locais`);
     }
-  } else {
-    console.log(`  ⚠ FOOTBALL_DATA_API_KEY não configurada — tentando dados locais`);
   }
 
-  // If API failed or key missing, try computing from local DB matches
-  if (!matches || matches.length === 0) {
-    return await syncStandingsFromLocalMatches(comp, seasonId);
-  }
-
-  // Fetch manually adjusted match IDs so we can exclude them from API-based computation
-  const manualMatches = await prisma.match.findMany({
-    where: { competitionId: comp.id, manuallyAdjusted: true },
-    select: { id: true }
-  });
-  const manualMatchIds = new Set(manualMatches.map(m => m.id));
-
-  const matchesByGroup = {};
-  for (const match of matches) {
-    const groupName = typeof match.group === "string" ? match.group : match.group?.name;
-    if (!groupName) continue;
-
-    const matchId = `fb_${match.id}`;
-    if (manualMatchIds.has(matchId)) {
-      console.log(`  ⏭ Pulando ${matchId} do cálculo (ajuste manual)`);
-      continue;
+  if (matches && matches.length > 0) {
+    const rows = buildRowsFromMatchData(comp, seasonId, matches);
+    if (rows.length > 0) {
+      await prisma.standing.createMany({ data: rows });
+      console.log(`  ${rows.length} registros calculados a partir de jogos da API`);
+      await applyManualAdjustments(comp.id, seasonId);
+      return;
     }
-
-    if (!matchesByGroup[groupName]) matchesByGroup[groupName] = [];
-    matchesByGroup[groupName].push(match);
   }
 
-  let rows;
-  if (Object.keys(matchesByGroup).length > 0) {
-    rows = buildGroupStandingRows(comp, seasonId, matchesByGroup);
-    console.log(`  ${rows.length} registros de grupos calculados`);
-  } else {
-    // Compute flat standings from all matches (excluding manually adjusted)
-    const nonManualMatches = matches.filter(m => !manualMatchIds.has(`fb_${m.id}`));
-    const sorted = computeFlatStandingsFromMatches(nonManualMatches);
-    rows = buildFlatStandingRowsFromMatches(comp, seasonId, sorted);
-    console.log(`  ${rows.length} registros (tabela geral calculada)`);
-  }
-
-  if (rows.length > 0) {
-    await prisma.standing.createMany({ data: rows });
-  }
-
-  // Re-apply manually adjusted match results (W.O., score corrections)
-  await applyManualAdjustments(comp.id, seasonId);
+  // Final fallback: compute from local DB matches
+  console.log(`  ⚠ Dados da API indisponíveis — calculando do banco local...`);
+  await syncStandingsFromLocalMatches(comp, seasonId);
 }
 
 /**
@@ -392,8 +439,6 @@ async function syncStandings() {
     try {
       if (comp.apiProvider === "fifa") {
         await syncFifaStandings(comp);
-      } else if (comp.apiProvider === "cbf") {
-        await syncStandingsFromLocalMatches(comp, String(comp.config.footballDataSeason));
       } else if (comp.apiProvider === "football-data" || comp.config.footballDataLeagueId) {
         await syncFootballDataStandings(comp);
       }
