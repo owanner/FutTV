@@ -227,7 +227,9 @@ async function applyManualAdjustments(compId, seasonId) {
 
 function buildRowsFromOfficialStandings(comp, seasonId, officialStandings) {
   const rows = [];
-  for (const standing of officialStandings) {
+  const totalStandings = officialStandings.filter(s => s.type === "TOTAL");
+
+  for (const standing of totalStandings) {
     const groupName = standing.group?.name || null;
     const table = standing.table || [];
 
@@ -281,58 +283,58 @@ async function syncFootballDataStandings(comp) {
 
   console.log(`📊 [${comp.name}] Sincronizando classificação...`);
 
-  await prisma.standing.deleteMany({
-    where: { competitionId: comp.id, seasonId }
+  let rows = [];
+
+  const matchesResponse = apiKey
+    ? await footballDataApi.getMatches(footballDataLeagueId, footballDataSeason).catch(err => {
+        console.error(`  ⚠ football-data.org matches API falhou: ${err.message}`);
+        return null;
+      })
+    : null;
+
+  if (matchesResponse && matchesResponse.length > 0) {
+    rows = buildRowsFromMatchData(comp, seasonId, matchesResponse);
+    console.log(`  Calculando a partir de ${matchesResponse.length} jogos da API...`);
+  }
+
+  if (rows.length === 0 && apiKey) {
+    const officialStandings = await footballDataApi
+      .getStandings(footballDataLeagueId, footballDataSeason)
+      .catch(err => {
+        console.error(`  ⚠ football-data.org standings API falhou: ${err.message}`);
+        return null;
+      });
+
+    if (officialStandings && officialStandings.length > 0) {
+      rows = buildRowsFromOfficialStandings(comp, seasonId, officialStandings);
+      console.log(`  Usando classificação oficial (TOTAL) da API...`);
+    }
+  }
+
+  if (rows.length === 0) {
+    console.log(`  ⚠ Dados da API indisponíveis — calculando do banco local...`);
+    await syncStandingsFromLocalMatches(comp, seasonId);
+    return;
+  }
+
+  const filteredRows = rows.filter(r => r.teamName && r.teamId);
+  if (filteredRows.length === 0) {
+    console.log(`  ⚠ Nenhuma linha válida para criar`);
+    return;
+  }
+
+  console.log(`  Criando ${filteredRows.length} registros...`);
+  await prisma.$transaction([
+    prisma.standing.deleteMany({
+      where: { competitionId: comp.id, seasonId }
+    }),
+    prisma.standing.createMany({ data: filteredRows })
+  ]);
+  console.log(`  ✅ ${filteredRows.length} registros criados`);
+
+  await applyManualAdjustments(comp.id, seasonId).catch(err => {
+    console.error(`  ⚠ Erro ao aplicar ajustes manuais: ${err.message}`);
   });
-
-  // Try football-data.org standings endpoint first (official standings)
-  let officialStandings = null;
-  if (apiKey) {
-    try {
-      const rawStandings = await footballDataApi.getStandings(footballDataLeagueId, footballDataSeason);
-      if (rawStandings && rawStandings.length > 0) {
-        officialStandings = rawStandings;
-      }
-    } catch (err) {
-      console.error(`  ⚠ football-data.org standings API falhou: ${err.message}`);
-    }
-  }
-
-  if (officialStandings) {
-    const rows = buildRowsFromOfficialStandings(comp, seasonId, officialStandings);
-    if (rows.length > 0) {
-      await prisma.standing.createMany({ data: rows });
-      console.log(`  ${rows.length} registros de classificação oficial criados`);
-      await applyManualAdjustments(comp.id, seasonId);
-      return;
-    }
-  }
-
-  console.log(`  ⚠ Classificação oficial indisponível — calculando a partir de jogos...`);
-
-  // Fallback: compute from football-data.org match data
-  let matches = null;
-  if (apiKey) {
-    try {
-      matches = await footballDataApi.getMatches(footballDataLeagueId, footballDataSeason);
-    } catch (err) {
-      console.error(`  ⚠ football-data.org matches API falhou: ${err.message} — tentando dados locais`);
-    }
-  }
-
-  if (matches && matches.length > 0) {
-    const rows = buildRowsFromMatchData(comp, seasonId, matches);
-    if (rows.length > 0) {
-      await prisma.standing.createMany({ data: rows });
-      console.log(`  ${rows.length} registros calculados a partir de jogos da API`);
-      await applyManualAdjustments(comp.id, seasonId);
-      return;
-    }
-  }
-
-  // Final fallback: compute from local DB matches
-  console.log(`  ⚠ Dados da API indisponíveis — calculando do banco local...`);
-  await syncStandingsFromLocalMatches(comp, seasonId);
 }
 
 /**
