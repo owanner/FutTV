@@ -60,27 +60,36 @@ function inferStatus(match) {
 }
 
 /**
- * Map a CBF competition to a friendly stage name based on rodada.
- * Used by knockout competitions like the Copa do Brasil.
+ * Map a CBF Copa do Brasil match to a friendly stage name.
  *
- * CBF Copa do Brasil 2026 uses:
- *   rodada 1 = Primeira Fase (118 jogos mata-mata)
- *   rodada 2 = Segunda Fase (24 jogos)
- *   ... higher rounds = oitavas/quartas/semi/final (added over time)
+ * The CBF API exposes `rodada` (round) but it does NOT map 1:1 to a knockout
+ * phase — the same round holds matches from several real stages. We infer
+ * the stage from the match's status:
+ *
+ *   - Finished matches (status === 0) all belong to the "Fase Inicial"
+ *     (qualifying rounds that have already been played).
+ *   - Upcoming matches in rounds 1 and 2 are the Oitavas de Final (home leg
+ *     in round 1, away leg in round 2). The away leg has a later date but
+ *     both keep `round` 1/2 in the CBF payload, so we group them together
+ *     under "Oitavas de Final".
+ *
+ * Future quartas/semi/final placeholders will appear once published by CBF.
  */
-function inferCbrStage(round, competitionId) {
-  if (competitionId !== "copadobrasil2026" || !round) return null;
+function inferCbrStage(round, competitionId, status) {
+  if (competitionId !== "copadobrasil2026") return null;
+
+  // Finished matches all collapse to "Fase Inicial" – the Mata-Mata tab in
+  // the frontend overrides this stage-based grouping using match status.
+  if (status === 0) return "Fase Inicial";
+
+  // Upcoming matches: rounds 1 and 2 represent the home/away legs of the
+  // Oitavas de Final in the current Copa do Brasil edition.
   const r = parseInt(round);
-  const STAGES = {
-    1: "Primeira Fase",
-    2: "Segunda Fase",
-    3: "Terceira Fase",
-    4: "Oitavas de Final",
-    5: "Quartas de Final",
-    6: "Semifinal",
-    7: "Final"
-  };
-  return STAGES[r] || `Rodada ${r}`;
+  if (!Number.isNaN(r) && (r === 1 || r === 2)) return "Oitavas de Final";
+
+  // Higher upcoming rounds (3+) would be Quartas/Semifinal/Final — but they
+  // are not yet published by CBF in this dataset; return a generic label.
+  return `Rodada ${r || "?"}`;
 }
 
 /**
@@ -104,7 +113,7 @@ function buildMatchData(match, compId, seasonId) {
   let awayScore = isFinished ? (isNaN(awayGoals) ? 0 : awayGoals) : null;
 
   const stageName = match.campeonato?.nome_categoria
-    || inferCbrStage(match.rodada, compId)
+    || inferCbrStage(match.rodada, compId, status)
     || null;
 
   // For Copa do Brasil knockouts, embed the penalty result in the stadium

@@ -114,14 +114,15 @@ export const KNOCKOUT_PHASES = {
     { key: "FINAL", label: "Final", ties: 1, matchCount: 1 }
   ],
   copadobrasil2026: [
-    // CBF Copa do Brasil — home-and-away knockout for later rounds.
-    { key: "ROUND_OF_64", label: "1ª Fase", ties: 32, matchCount: 32 },
-    { key: "ROUND_OF_32", label: "2ª Fase", ties: 16, matchCount: 16 },
-    { key: "ROUND_OF_16", label: "16 Avos", ties: 16, matchCount: 16 },
+    // CBF Copa do Brasil — knockout-only competition.
+    // Past matches are grouped as "Fase Inicial" (handled by backend `inferCbrStage`
+    // and excluded from the knockout bracket here). The remaining phases are
+    // home-and-away ties: Oitavas (16 = 8 ties × 2 legs), Quartas (8 = 4 ties ×
+    // 2 legs), Semifinal (4 = 2 ties × 2 legs), Final (single match).
     { key: "ROUND_OF_8", label: "Oitavas de Final", ties: 8, matchCount: 16 },
     { key: "QUARTER_FINAL", label: "Quartas de Final", ties: 4, matchCount: 8 },
     { key: "SEMI_FINAL", label: "Semifinal", ties: 2, matchCount: 4 },
-    { key: "FINAL", label: "Final", ties: 1, matchCount: 2 }
+    { key: "FINAL", label: "Final", ties: 1, matchCount: 1 }
   ]
 };
 
@@ -240,7 +241,13 @@ export function groupMatchesByPhase(matches, phases, competitionId) {
     return byPhase;
   }
 
-  (matches || []).forEach((m) => {
+  // Copa do Brasil: finished matches (status === 0) belong to "Fase Inicial"
+  // and are NOT part of the knockout bracket — only classify upcoming ones.
+  const pool = competitionId === "copadobrasil2026"
+    ? (matches || []).filter((m) => m.status !== 0)
+    : (matches || []);
+
+  pool.forEach((m) => {
     const key = matchToPhase(m, competitionId);
     if (key && byPhase[key]) byPhase[key].push(m);
   });
