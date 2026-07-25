@@ -194,10 +194,10 @@ function StandingsTab({ competitionId }) {
     return (
       <Box sx={{ py: 6, textAlign: "center" }}>
         <Typography color="text.secondary" sx={{ fontWeight: 700 }}>
-          Esta competição é disputada apenas em mata-mata.
+          Esta competição é disputada apenas em fase eliminatória.
         </Typography>
         <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
-          Veja a aba “Mata-Mata” para os confrontos.
+          Veja a aba “Fase Eliminatória” para os confrontos.
         </Typography>
       </Box>
     );
@@ -273,12 +273,12 @@ export default function CompetitionDetail() {
 
   // Tabs are assembled dynamically so that pure-knockout competitions
   // (e.g. Copa do Brasil) omit the "Classificação" tab, while league/group
-  // competitions show it. The Mata-Mata tab appears whenever the competition
+  // competitions show it. The Knockouts tab appears whenever the competition
   // has a knockout stage.
-  // Order: [Jogos] [Classificação (when hasGroupStage)] [Mata-Mata (when hasKnockoutStage)]
+  // Order: [Jogos] [Classificação (when hasGroupStage)] [Knockouts (when hasKnockoutStage)]
   const tabs = ["Jogos"];
   if (showStandingsTab) tabs.push("Classificação");
-  if (showKnockoutTab) tabs.push("Mata-Mata");
+  if (showKnockoutTab) tabs.push("Fase Eliminatória");
 
   const standingsTabIndex = showStandingsTab ? 1 : -1;
   const bracketTabIndex = (showStandingsTab ? 2 : 1);

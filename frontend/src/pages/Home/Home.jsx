@@ -5,6 +5,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 import { useAllMatches } from "../../hooks/useAllMatches";
 import { getAllCompetitions } from "../../config/competitions";
+import { useCompetitionsStatus } from "../../hooks/useCompetitionsStatus";
 
 import MatchCard from "../../components/MatchCard/MatchCard";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
@@ -15,6 +16,7 @@ import "dayjs/locale/pt-br";
 dayjs.locale("pt-br");
 
 const ALL_ID = "__all__";
+const HOME_HORIZON_DAYS = 30;
 
 /* ─── Skeleton loaders ─── */
 
@@ -49,7 +51,18 @@ function GridSkeleton() {
 export default function Home() {
   const navigate = useNav();
   const allCompetitions = getAllCompetitions();
+  const { data: statusMap } = useCompetitionsStatus();
   const [filterComp, setFilterComp] = useState(ALL_ID);
+
+  const visibleCompetitions = allCompetitions.filter((c) => {
+    const st = statusMap?.[c.id];
+    if (!st) return true; // ainda carregando / sem status -> mantém visível
+    if (st.hasLive) return true;
+    if (st.hasUpcoming && st.nextMatchDate) {
+      return dayjs(st.nextMatchDate).isBefore(dayjs().add(HOME_HORIZON_DAYS, "day"));
+    }
+    return false;
+  });
 
   const activeCompId = filterComp === ALL_ID ? undefined : filterComp;
   const { data, isLoading, isError } = useAllMatches({ competitionId: activeCompId });
@@ -85,7 +98,7 @@ export default function Home() {
           color={filterComp === ALL_ID ? "primary" : "default"}
           sx={{ fontWeight: 700, flexShrink: 0 }}
         />
-        {allCompetitions.map((c) => (
+        {visibleCompetitions.map((c) => (
           <Chip
             key={c.id}
             label={c.shortName || c.name}
@@ -156,13 +169,13 @@ export default function Home() {
           {live.length > 0 && (
             <Stack spacing={2} sx={{ mb: 1 }}>
               {live.map((m) => (
-                <MatchCard key={m.id} match={m} variant="hero" colors={activeColors} />
+                <MatchCard key={m.id} match={m} variant="hero" colors={activeColors || m.competitionColors} />
               ))}
             </Stack>
           )}
 
           {live.length === 0 && featuredUpcoming && (
-            <MatchCard match={featuredUpcoming} variant="hero" colors={activeColors} />
+            <MatchCard match={featuredUpcoming} variant="hero" colors={activeColors || featuredUpcoming.competitionColors} />
           )}
 
           {/* Upcoming */}
@@ -227,7 +240,7 @@ export default function Home() {
           <Box sx={{ pt: 2 }}>
             <SectionHeader label="Competições" accent="#6366F1" />
             <Stack direction="row" spacing={1.5} sx={{ overflowX: "auto", pb: 1 }}>
-              {allCompetitions.map((c) => (
+              {visibleCompetitions.map((c) => (
                 <Box
                   key={c.id}
                   onClick={() => navigate(`/competitions/${c.id}`)}

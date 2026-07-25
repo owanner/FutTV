@@ -162,7 +162,7 @@ export default function Bracket({ competitionId: overrideId }) {
   }, [matchesQuery.data, phases, competitionId]);
 
   if (matchesQuery.isLoading) return <PageLoader />;
-  if (matchesQuery.error) return <PageError message="Erro ao carregar mata-mata" />;
+  if (matchesQuery.error) return <PageError message="Erro ao carregar fase eliminatória" />;
   if (!phases) {
     return (
       <Card>
@@ -170,7 +170,7 @@ export default function Bracket({ competitionId: overrideId }) {
           <Stack spacing={1} alignItems="center" sx={{ py: 2 }}>
             <EmojiEventsIcon sx={{ fontSize: 40, color: "text.secondary" }} />
             <Typography color="text.secondary" sx={{ fontWeight: 700 }}>
-              Esta competição não possui fase de mata-mata.
+              Esta competição não possui fase de eliminatória.
             </Typography>
           </Stack>
         </CardContent>
@@ -189,7 +189,7 @@ export default function Bracket({ competitionId: overrideId }) {
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
             <EmojiEventsIcon color="primary" fontSize="small" />
             <Typography variant="body2" sx={{ fontWeight: 700 }}>
-              Mata-mata
+              Fase eliminatória
             </Typography>
             <Chip
               size="small"

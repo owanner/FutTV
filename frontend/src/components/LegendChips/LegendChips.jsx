@@ -52,7 +52,7 @@ export default function LegendChips({ competitionId }) {
     // Pure knockout competitions (e.g. Copa do Brasil): no group standings, so
     // show a single informational chip.
     content = (
-      <Chip color="primary" label="Mata-mata" sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }} />
+      <Chip color="primary" label="Fase eliminatória" sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }} />
     );
   } else {
     content = (

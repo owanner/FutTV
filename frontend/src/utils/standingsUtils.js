@@ -80,7 +80,7 @@ export const ADVANCE_ZONES = [
 ];
 
 /**
- * Knockout phase definitions used by the Mata-Mata tab.
+ * Knockout phase definitions used by the Knockouts tab.
  * Each phase has a key, label, and `ties` = number of *fixtures*
  * (home-and-away ties counted as one fixture, but we expose `matchCount`
  * as the total number of individual matches expected, since South American

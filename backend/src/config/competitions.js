@@ -20,7 +20,7 @@ const competitions = [
       primary: "#19AE47",
       secondary: "#FFDC02",
       accent: "#193375",
-      gradient: "linear-gradient(90deg, #19AE47 0%, #FFDC02 50%, #193375 100%)",
+      gradient: "linear-gradient(90deg, #FFDC02 0%, #19AE47 50%, #193375 100%)",
       background: "#F6FDF9",
       paper: "#FFFFFF"
     }

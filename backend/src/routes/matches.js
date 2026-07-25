@@ -88,7 +88,7 @@ router.get("/stages", async (req, res) => {
     res.json({ stages });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Erro ao buscar fases mata-mata" });
+    res.status(500).json({ error: "Erro ao buscar fases eliminatórias" });
   }
 });
 

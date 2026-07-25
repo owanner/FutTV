@@ -68,9 +68,9 @@ export default function Standings() {
       />
 
       <Stack spacing={2}>
-        {/* Tournament stage tabs: Groups / Knockout (Mata-mata). */}
+        {/* Tournament stage tabs: Groups / Knockout. */}
         {/* The "Fase de Grupos" chip is only shown for competitions that actually have a group stage; */}
-        {/* pure-knockout competitions (e.g. Copa do Brasil) only show "Mata-Mata". */}
+        {/* pure-knockout competitions (e.g. Copa do Brasil) only show "Fase Eliminatória". */}
         {showKnockoutTab && showStandingsTab && (
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             <Chip
@@ -80,7 +80,7 @@ export default function Standings() {
               sx={{ fontWeight: 700, ...(tab === "groups" ? { bgcolor: "primary.main", color: "#fff" } : {}) }}
             />
             <Chip
-              label="Mata-Mata"
+              label="Fase eliminatória"
               onClick={() => setTab("knockout")}
               variant={tab === "knockout" ? "filled" : "outlined"}
               sx={{ fontWeight: 700, ...(tab === "knockout" ? { bgcolor: "primary.main", color: "#fff" } : {}) }}
@@ -94,7 +94,7 @@ export default function Standings() {
         ) : format === "knockout" ? (
           <Box sx={{ py: 6, textAlign: "center" }}>
             <Typography color="text.secondary" sx={{ fontWeight: 700 }}>
-              Esta competição é disputada apenas em mata-mata.
+              Esta competição é disputada apenas em fase eliminatória.
             </Typography>
           </Box>
         ) : (

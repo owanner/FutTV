@@ -56,7 +56,7 @@ function TeamBlock({ flag, name, code, size = "md", dark = false, onClick }) {
           display: "grid",
           placeItems: "center",
           borderRadius: 1.5,
-          backgroundColor: dark ? "rgba(255,255,255,0.10)" : "#F8FAFC",
+          backgroundColor: "#FFFFFF",
           border: dark
             ? "1px solid rgba(255,255,255,0.18)"
             : "1px solid rgba(16,32,29,0.08)",
@@ -290,7 +290,7 @@ export default function MatchCard({ match, variant = "grid", size, colors, onCli
   /* ───── Hero variant: large dark gradient ───── */
   if (variant === "hero") {
     const c = colors || match.competitionColors || { primary: "#1a1a1a", secondary: "#1a1a1a" };
-    const gradient = `linear-gradient(135deg, ${c.secondary || "#1a1a1a"} 0%, ${c.secondary || "#1a1a1a"}cc 45%, ${c.primary} 100%)`;
+    const gradient = `linear-gradient(135deg, ${c.primary} 0%, ${c.primary}cc 45%, ${c.secondary || "#1a1a1a"} 100%)`;
 
     const Wrapper = noAction ? Box : CardActionArea;
     const wrapperProps = noAction

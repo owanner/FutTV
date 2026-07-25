@@ -78,7 +78,7 @@ function inferStatus(match) {
 function inferCbrStage(round, competitionId, status) {
   if (competitionId !== "copadobrasil2026") return null;
 
-  // Finished matches all collapse to "Fase Inicial" – the Mata-Mata tab in
+  // Finished matches all collapse to "Fase Inicial" – the Knockout tab in
   // the frontend overrides this stage-based grouping using match status.
   if (status === 0) return "Fase Inicial";
 
