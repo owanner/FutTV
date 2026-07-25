@@ -6,6 +6,7 @@ import {
   getCompetition,
   getAllCompetitions,
   getCompetitionFormat,
+  hasGroupStage,
   hasKnockoutStage
 } from "../../config/competitions";
 import { buildGroups } from "../../utils/standingsUtils";
@@ -21,6 +22,7 @@ export default function Standings() {
   const { competition, competitionId } = useCompetition();
   const format = getCompetitionFormat(competitionId);
   const showGroupsToggle = format === "groups-then-knockout" || competitionId === "libertadores2026";
+  const showStandingsTab = hasGroupStage(competitionId);
   const showKnockoutTab = hasKnockoutStage(competitionId);
   const defaultTab = format === "knockout" ? "knockout" : "groups";
   const [tab, setTab] = useState(defaultTab);
@@ -66,8 +68,10 @@ export default function Standings() {
       />
 
       <Stack spacing={2}>
-        {/* Tournament stage tabs: Groups / Knockout (Mata-mata) */}
-        {showKnockoutTab && (
+        {/* Tournament stage tabs: Groups / Knockout (Mata-mata). */}
+        {/* The "Fase de Grupos" chip is only shown for competitions that actually have a group stage; */}
+        {/* pure-knockout competitions (e.g. Copa do Brasil) only show "Mata-Mata". */}
+        {showKnockoutTab && showStandingsTab && (
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             <Chip
               label="Fase de Grupos"

@@ -11,7 +11,7 @@ import {
   Tab
 } from "@mui/material";
 
-import { getCompetition, getCompetitionFormat, hasKnockoutStage } from "../../config/competitions";
+import { getCompetition, getCompetitionFormat, hasGroupStage, hasKnockoutStage } from "../../config/competitions";
 import { useMatches } from "../../hooks/useMatches";
 import { useStandings } from "../../hooks/useStandings";
 import { getStatus } from "../../utils/statusUtils";
@@ -303,6 +303,7 @@ export default function CompetitionDetail() {
   const { id } = useParams();
   const navigate = useNav();
   const competition = getCompetition(id);
+  const showStandingsTab = hasGroupStage(id);
   const showKnockoutTab = hasKnockoutStage(id);
   const [tab, setTab] = useState(0);
 
@@ -316,9 +317,17 @@ export default function CompetitionDetail() {
     );
   }
 
-  // Tabs: [Jogos] [Classificação] [Mata-Mata (when applicable)]
-  const tabs = ["Jogos", "Classificação"];
+  // Tabs are assembled dynamically so that pure-knockout competitions
+  // (e.g. Copa do Brasil) omit the "Classificação" tab, while league/group
+  // competitions show it. The Mata-Mata tab appears whenever the competition
+  // has a knockout stage.
+  // Order: [Jogos] [Classificação (when hasGroupStage)] [Mata-Mata (when hasKnockoutStage)]
+  const tabs = ["Jogos"];
+  if (showStandingsTab) tabs.push("Classificação");
   if (showKnockoutTab) tabs.push("Mata-Mata");
+
+  const standingsTabIndex = showStandingsTab ? 1 : -1;
+  const bracketTabIndex = (showStandingsTab ? 2 : 1);
 
   return (
     <Stack spacing={2}>
@@ -365,8 +374,8 @@ export default function CompetitionDetail() {
       </Tabs>
 
       {tab === 0 && <MatchesTab competitionId={id} />}
-      {tab === 1 && <StandingsTab key={id} competitionId={id} />}
-      {tab === 2 && <Bracket key={id} competitionId={id} />}
+      {standingsTabIndex !== -1 && tab === standingsTabIndex && <StandingsTab key={id} competitionId={id} />}
+      {showKnockoutTab && tab === bracketTabIndex && <Bracket key={id} competitionId={id} />}
     </Stack>
   );
 }
