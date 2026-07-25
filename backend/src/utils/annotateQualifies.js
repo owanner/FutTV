@@ -12,6 +12,7 @@
  *   - brasileirao2026: not handled here (frontend has its own zone logic).
  *   - libertadores2026: 1-2 qualified (green), 3 sulamericana (yellow),
  *     4 eliminated (red).
+ *   - sulamericana2026: 1-2 qualified (green), 3-4 eliminated (red).
  *   - wc2026 (48 teams, 12 groups): 1-2 qualified (green). The 8 best
  *     third-placed teams across all groups advance as "best-third" (yellow).
  *     The remaining 4 third-placed teams and all fourth-placed teams are
@@ -31,6 +32,14 @@ function annotateQualifies(standings) {
       let qualifies = "eliminated";
       if (row.position <= 2) qualifies = "qualified";
       else if (row.position === 3) qualifies = "sulamericana";
+      return { ...row, qualifies };
+    });
+  }
+
+  if (compId === "sulamericana2026") {
+    return standings.map((row) => {
+      let qualifies = "eliminated";
+      if (row.position <= 2) qualifies = "qualified";
       return { ...row, qualifies };
     });
   }

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import {
   Box,
@@ -7,12 +7,11 @@ import {
   Typography,
   Card,
   CardActionArea,
-  CardContent,
   Tabs,
   Tab
 } from "@mui/material";
 
-import { getCompetition } from "../../config/competitions";
+import { getCompetition, getCompetitionFormat, hasKnockoutStage } from "../../config/competitions";
 import { useMatches } from "../../hooks/useMatches";
 import { useStandings } from "../../hooks/useStandings";
 import { getStatus } from "../../utils/statusUtils";
@@ -25,6 +24,7 @@ import FlatStandings from "../../components/FlatStandings/FlatStandings";
 import LegendChips from "../../components/LegendChips/LegendChips";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
 import { PageLoader, PageError } from "../../components/PageLoader/PageLoader";
+import Bracket from "../Bracket/Bracket";
 
 import useNav from "../../hooks/useNav";
 import dayjs from "dayjs";
@@ -127,7 +127,7 @@ const STATUS_FILTERS = [
 
 function MatchesTab({ competitionId }) {
   const { data, isLoading, error } = useMatches(competitionId);
-  const [search, setSearch] = useState("");
+  const [search] = useState("");
   const [status, setStatus] = useState("");
 
   const filtered = useMemo(() => {
@@ -227,17 +227,27 @@ function MatchesTab({ competitionId }) {
 
 function StandingsTab({ competitionId }) {
   const { data, isLoading, error } = useStandings(competitionId);
-  const isLibertadores = competitionId === "libertadores2026";
+  const format = getCompetitionFormat(competitionId);
   const comp = getCompetition(competitionId);
   const teamLabel = comp?.teamLabel || "Time";
-  const [view, setView] = useState(isLibertadores ? "groups" : "flat");
-
-  useEffect(() => {
-    setView(isLibertadores ? "groups" : "flat");
-  }, [isLibertadores]);
+  const showGroupsToggle = format === "groups-then-knockout" || competitionId === "libertadores2026";
+  const [view, setView] = useState("groups");
 
   if (isLoading) return <PageLoader />;
   if (error) return <PageError message="Erro ao carregar classificação" />;
+
+  if (format === "knockout") {
+    return (
+      <Box sx={{ py: 6, textAlign: "center" }}>
+        <Typography color="text.secondary" sx={{ fontWeight: 700 }}>
+          Esta competição é disputada apenas em mata-mata.
+        </Typography>
+        <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+          Veja a aba “Mata-Mata” para os confrontos.
+        </Typography>
+      </Box>
+    );
+  }
 
   if (!data || data.length === 0) {
     return (
@@ -251,13 +261,11 @@ function StandingsTab({ competitionId }) {
 
   const groups = buildGroups(data);
 
-  if (isLibertadores) {
-    const sortedTeams = [...data].sort((a, b) => b.points - a.points);
+  return (
+    <Stack spacing={2}>
+      <LegendChips competitionId={competitionId} />
 
-    return (
-      <Stack spacing={2}>
-        <LegendChips competitionId={competitionId} />
-
+      {showGroupsToggle && (
         <Box sx={{ display: "flex", gap: 1 }}>
           <Chip
             label="Fase de Grupos"
@@ -266,34 +274,27 @@ function StandingsTab({ competitionId }) {
             sx={{ fontWeight: 700, ...(view === "groups" ? { bgcolor: "primary.main", color: "#fff" } : {}) }}
           />
           <Chip
-            label="Classificação"
+            label="Classificação Geral"
             onClick={() => setView("flat")}
             variant={view === "flat" ? "filled" : "outlined"}
             sx={{ fontWeight: 700, ...(view === "flat" ? { bgcolor: "primary.main", color: "#fff" } : {}) }}
           />
         </Box>
+      )}
 
-        {view === "groups" && (
-          <Stack spacing={2}>
-            {Object.entries(groups).map(([groupName, teams]) => (
-              <GroupStandings key={groupName} groupName={groupName} teams={teams} competitionId={competitionId} />
-            ))}
-          </Stack>
-        )}
-
-        {view === "flat" && (
-          <FlatStandings teams={sortedTeams} teamLabel={teamLabel} competitionId={competitionId} />
-        )}
-      </Stack>
-    );
-  }
-
-  return (
-    <Stack spacing={2}>
-      <LegendChips competitionId={competitionId} />
-      {Object.entries(groups).map(([groupName, teams]) => (
-        <GroupStandings key={groupName} groupName={groupName} teams={teams} competitionId={competitionId} />
-      ))}
+      {view === "flat" ? (
+        <FlatStandings
+          teams={[...data].sort((a, b) => b.points - a.points)}
+          teamLabel={teamLabel}
+          competitionId={competitionId}
+        />
+      ) : (
+        <Stack spacing={2}>
+          {Object.entries(groups).map(([groupName, teams]) => (
+            <GroupStandings key={groupName} groupName={groupName} teams={teams} competitionId={competitionId} />
+          ))}
+        </Stack>
+      )}
     </Stack>
   );
 }
@@ -302,6 +303,7 @@ export default function CompetitionDetail() {
   const { id } = useParams();
   const navigate = useNav();
   const competition = getCompetition(id);
+  const showKnockoutTab = hasKnockoutStage(id);
   const [tab, setTab] = useState(0);
 
   if (!competition) {
@@ -313,6 +315,10 @@ export default function CompetitionDetail() {
       </Box>
     );
   }
+
+  // Tabs: [Jogos] [Classificação] [Mata-Mata (when applicable)]
+  const tabs = ["Jogos", "Classificação"];
+  if (showKnockoutTab) tabs.push("Mata-Mata");
 
   return (
     <Stack spacing={2}>
@@ -353,12 +359,14 @@ export default function CompetitionDetail() {
           "& .MuiTab-root": { minHeight: 40, py: 0, fontWeight: 700 }
         }}
       >
-        <Tab label="Jogos" />
-        <Tab label="Classificação" />
+        {tabs.map((label) => (
+          <Tab key={label} label={label} />
+        ))}
       </Tabs>
 
       {tab === 0 && <MatchesTab competitionId={id} />}
-      {tab === 1 && <StandingsTab competitionId={id} />}
+      {tab === 1 && <StandingsTab key={id} competitionId={id} />}
+      {tab === 2 && <Bracket key={id} competitionId={id} />}
     </Stack>
   );
 }

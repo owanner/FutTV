@@ -83,11 +83,14 @@ const competitions = [
     },
     format: "groups-then-knockout",
     colors: {
-      primary: "#006A4E",
-      secondary: "#00A862",
+      // Palette: White, Dark Blue, Silver.
+      // Deep navy blue is used as `primary` so accent bars/badges remain
+      // visible; silver is `secondary` and white is `accent`.
+      primary: "#0B1F4F",
+      secondary: "#8A8D91",
       accent: "#FFFFFF",
-      gradient: "linear-gradient(90deg, #006A4E 0%, #00A862 100%)",
-      background: "#F4FBF8",
+      gradient: "linear-gradient(90deg, #FFFFFF 0%, #8A8D91 50%, #0B1F4F 100%)",
+      background: "#F2F4F8",
       paper: "#FFFFFF"
     }
   },

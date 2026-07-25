@@ -423,7 +423,7 @@ async function syncConmebolStandings(comp, seasonId) {
     byGroup[gid].push(m);
   });
 
-  if (Object.keys(byGroups).length === 0) {
+  if (Object.keys(byGroup).length === 0) {
     console.log(`  ⚠ Nenhum jogo da fase de grupos encontrado; pulando Sulamericana.`);
     return;
   }
