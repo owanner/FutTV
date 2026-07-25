@@ -97,18 +97,21 @@ export const KNOCKOUT_PHASES = {
     { key: "FINAL", label: "Final", ties: 1, matchCount: 1 }
   ],
   libertadores2026: [
-    // football-data.org exposes no `stage` for Libertadores; we infer from
-    // `round` instead (1-2 = Oitavas, 3-4 = Quartas, 5-6 = Semifinal, 7 = Final).
-    { key: "ROUND_OF_16", label: "Oitavas de Final", ties: 8, matchCount: 16, roundRange: [1, 2] },
-    { key: "QUARTER_FINAL", label: "Quartas de Final", ties: 4, matchCount: 8, roundRange: [3, 4] },
-    { key: "SEMI_FINAL", label: "Semifinal", ties: 2, matchCount: 4, roundRange: [5, 6] },
-    { key: "FINAL", label: "Final", ties: 1, matchCount: 2, roundRange: [7, 7] }
+    // football-data.org exposes no `stage` for Libertadores, and `round` is
+    // ambiguous (it overlaps group-stage matchdays with knockout rounds).
+    // We therefore classify by `status` (knockout matches are upcoming, i.e.
+    // status !== 0) and cluster the forthcoming fixtures by date into the
+    // expected phases below. Modern Libertadores has a single Final.
+    { key: "ROUND_OF_8", label: "Oitavas de Final", ties: 8, matchCount: 16 },
+    { key: "QUARTER_FINAL", label: "Quartas de Final", ties: 4, matchCount: 8 },
+    { key: "SEMI_FINAL", label: "Semifinal", ties: 2, matchCount: 4 },
+    { key: "FINAL", label: "Final", ties: 1, matchCount: 1 }
   ],
   sulamericana2026: [
-    { key: "ROUND_OF_16", label: "Oitavas de Final", ties: 8, matchCount: 16, roundRange: [1, 2] },
-    { key: "QUARTER_FINAL", label: "Quartas de Final", ties: 4, matchCount: 8, roundRange: [3, 4] },
-    { key: "SEMI_FINAL", label: "Semifinal", ties: 2, matchCount: 4, roundRange: [5, 6] },
-    { key: "FINAL", label: "Final", ties: 1, matchCount: 2, roundRange: [7, 7] }
+    { key: "ROUND_OF_8", label: "Oitavas de Final", ties: 8, matchCount: 16 },
+    { key: "QUARTER_FINAL", label: "Quartas de Final", ties: 4, matchCount: 8 },
+    { key: "SEMI_FINAL", label: "Semifinal", ties: 2, matchCount: 4 },
+    { key: "FINAL", label: "Final", ties: 1, matchCount: 1 }
   ],
   copadobrasil2026: [
     // CBF Copa do Brasil — home-and-away knockout for later rounds.
@@ -125,10 +128,70 @@ export const KNOCKOUT_PHASES = {
 const NORMALISE = (s) => String(s || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
 /**
+ * Phase definitions used by the South-American date-clustering fallback
+ * (Libertadores / Sulamericana), ordered earliest → latest. The cluster
+ * sizes are the *expected* number of matches per phase; the algorithm
+ * consumes forthcoming matches (sorted by date) and assigns them to phases
+ * in order, splitting at the expected cumulative boundaries.
+ */
+const SOUTHERN_KNOCKOUT_PLAN = [
+  { key: "ROUND_OF_8", matchCount: 16 },      // Oitavas — 8 ties × 2 legs
+  { key: "QUARTER_FINAL", matchCount: 8 },   // Quartas — 4 ties × 2 legs
+  { key: "SEMI_FINAL", matchCount: 4 },      // Semifinal — 2 ties × 2 legs
+  { key: "FINAL", matchCount: 1 }            // Final — single match
+];
+
+/**
+ * Cluster a sorted list of forthcoming matches into phases by date.
+ * Two consecutive matches belong to the same phase unless they are separated
+ * by more than `gapDays` days OR the running cluster size reaches the
+ * expected matchCount for the current phase.
+ *
+ * Returns a map { phaseKey: Match[] }.
+ */
+function clusterSouthernByDate(upcomingMatches, gapDays = 10) {
+  const sorted = [...upcomingMatches]
+    .filter((m) => m.date)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const out = {};
+  SOUTHERN_KNOCKOUT_PLAN.forEach((p) => { out[p.key] = []; });
+
+  let planIdx = 0;
+  for (let i = 0; i < sorted.length && planIdx < SOUTHERN_KNOCKOUT_PLAN.length; i++) {
+    const m = sorted[i];
+    const plan = SOUTHERN_KNOCKOUT_PLAN[planIdx];
+
+    let advance = false;
+    // Advance when current phase already has its expected complement of matches.
+    if (out[plan.key].length >= plan.matchCount && planIdx < SOUTHERN_KNOCKOUT_PLAN.length - 1) {
+      advance = true;
+    }
+    // Also advance when there is a large date gap from the previous match
+    // (cross-phase boundary). Only advance once per iteration to avoid skipping
+    // empty intermediate phases.
+    if (!advance && i > 0) {
+      const prev = sorted[i - 1];
+      const gapMs = new Date(m.date).getTime() - new Date(prev.date).getTime();
+      const gapD = gapMs / (24 * 60 * 60 * 1000);
+      if (gapD > gapDays && planIdx < SOUTHERN_KNOCKOUT_PLAN.length - 1) {
+        advance = true;
+      }
+    }
+    if (advance) planIdx++;
+
+    const target = SOUTHERN_KNOCKOUT_PLAN[Math.min(planIdx, SOUTHERN_KNOCKOUT_PLAN.length - 1)].key;
+    out[target].push(m);
+  }
+
+  return out;
+}
+
+/**
  * Map a match to a knockout phase key for the competition identified by
  * `competitionId`. Tries the explicit stage name first (most reliable for
- * WC/CBF), then falls back to the `round` field for competitions where the
- * stage is not exposed (Libertadores/Sulamericana via football-data.org).
+ * WC/CBF), then falls back to date-based clustering for South American
+ * competitions where the stage is not exposed.
  */
 export function matchToPhase(match, competitionId) {
   const stageHay = NORMALISE([match.stageName, match.roundName, match.stageId].filter(Boolean).join(" "));
@@ -143,28 +206,19 @@ export function matchToPhase(match, competitionId) {
     if (stageHay.includes("BRONZE FINAL") || stageHay.includes("TERCEIRO") || stageHay.includes("3 LUGAR")) return "THIRD_PLACE";
     // Anchored "FINAL" — must NOT match "BRONZE FINAL" — handled above by order.
     if (/(^|\s)FINAL(\s|$)/.test(stageHay)) return "FINAL";
+  } else if (competitionId === "libertadores2026" || competitionId === "sulamericana2026") {
+    // South American competitions expose no `stage`; classification happens
+    // at the groupMatchesByPhase level via date clustering. Return null here
+    // so individual matches are not bucketed prematurely.
+    return null;
   } else {
-    // Generic fallback for other competitions.
+    // Generic fallback (e.g. Copa do Brasil via CBF).
     if (stageHay.includes("16 AVOS") || stageHay.includes("16AVOS") || stageHay.includes("SEGUNDAS DE FINAL")) return "ROUND_OF_16";
     if (stageHay.includes("OITAVAS DE FINAL") || stageHay.includes("ROUND OF 16") || stageHay.includes("R16")) return "ROUND_OF_8";
     if (stageHay.includes("QUARTAS DE FINAL") || stageHay.includes("QUARTER")) return "QUARTER_FINAL";
     if (stageHay.includes("SEMI")) return "SEMI_FINAL";
     if (stageHay.includes("BRONZE FINAL") || stageHay.includes("TERCEIRO") || stageHay.includes("3 LUGAR")) return "THIRD_PLACE";
     if (/(^|\s)FINAL(\s|$)/.test(stageHay)) return "FINAL";
-  }
-
-  // Round-based fallback (Libertadores/Sulamericana via football-data.org,
-  // which expose `round` but no `stage`). The competition's phase entries
-  // declare a `roundRange` to map round numbers to phases.
-  if (match.round != null && KNOCKOUT_PHASES[competitionId]) {
-    const round = Number(match.round);
-    if (!Number.isNaN(round)) {
-      const phase = KNOCKOUT_PHASES[competitionId].find((p) => {
-        if (!p.roundRange) return false;
-        return round >= p.roundRange[0] && round <= p.roundRange[1];
-      });
-      if (phase) return phase.key;
-    }
   }
 
   return null;
@@ -174,6 +228,18 @@ export function matchToPhase(match, competitionId) {
 export function groupMatchesByPhase(matches, phases, competitionId) {
   const byPhase = {};
   phases.forEach((p) => { byPhase[p.key] = []; });
+
+  // South American fallback: only forthcoming matches (status !== 0) are
+  // relevant for the knockout stage; classify them by date clusters.
+  if (competitionId === "libertadores2026" || competitionId === "sulamericana2026") {
+    const upcoming = (matches || []).filter((m) => m.status !== 0);
+    const clustered = clusterSouthernByDate(upcoming);
+    Object.keys(clustered).forEach((key) => {
+      if (byPhase[key]) byPhase[key] = clustered[key];
+    });
+    return byPhase;
+  }
+
   (matches || []).forEach((m) => {
     const key = matchToPhase(m, competitionId);
     if (key && byPhase[key]) byPhase[key].push(m);
