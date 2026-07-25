@@ -110,6 +110,7 @@ function MatchCard({ match, navigate, isThirdPlace }) {
 
 function PhaseBlock({ phase, matches, navigate }) {
   const isThirdPlace = phase.key === "THIRD_PLACE";
+  const sortedMatches = [...matches].sort((a, b) => new Date(a.date) - new Date(b.date));
   return (
     <Box>
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
@@ -118,7 +119,7 @@ function PhaseBlock({ phase, matches, navigate }) {
         </Typography>
         <Chip
           size="small"
-          label={`${matches.length}/${phase.ties}`}
+          label={`${sortedMatches.length}/${phase.matchCount}`}
           sx={{ height: 18, fontSize: "0.65rem", fontWeight: 700, bgcolor: "primary.light", color: "primary.dark" }}
         />
       </Stack>
@@ -129,10 +130,10 @@ function PhaseBlock({ phase, matches, navigate }) {
           gap: 1.5
         }}
       >
-        {matches.map((m) => (
+        {sortedMatches.map((m) => (
           <MatchCard key={m.id} match={m} navigate={navigate} isThirdPlace={isThirdPlace} />
         ))}
-        {matches.length === 0 && (
+        {sortedMatches.length === 0 && (
           <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
             Confrontos a definir.
           </Typography>
@@ -155,10 +156,10 @@ export default function Bracket({ competitionId: overrideId }) {
   const byPhase = useMemo(() => {
     if (!phases) return null;
     if (matchesQuery.data && matchesQuery.data.length > 0) {
-      return groupMatchesByPhase(matchesQuery.data, phases);
+      return groupMatchesByPhase(matchesQuery.data, phases, competitionId);
     }
     return null;
-  }, [matchesQuery.data, phases]);
+  }, [matchesQuery.data, phases, competitionId]);
 
   if (matchesQuery.isLoading) return <PageLoader />;
   if (matchesQuery.error) return <PageError message="Erro ao carregar mata-mata" />;
@@ -221,7 +222,7 @@ export default function Bracket({ competitionId: overrideId }) {
           return (
             <Chip
               key={phase.key}
-              label={`${phase.label} · ${count}/${phase.ties}`}
+              label={`${phase.label} · ${count}/${phase.matchCount}`}
               onClick={() => setSelectedPhase(phase.key)}
               variant={selectedPhase === phase.key ? "filled" : "outlined"}
               sx={{ fontWeight: 700, flexShrink: 0, ...(selectedPhase === phase.key ? { bgcolor: "primary.main", color: "#fff" } : {}) }}

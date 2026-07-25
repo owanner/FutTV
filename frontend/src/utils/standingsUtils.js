@@ -81,60 +81,101 @@ export const ADVANCE_ZONES = [
 
 /**
  * Knockout phase definitions used by the Mata-Mata tab.
- * Each phase has a key, label, and the number of matchups (ties).
+ * Each phase has a key, label, and `ties` = number of *fixtures*
+ * (home-and-away ties counted as one fixture, but we expose `matchCount`
+ * as the total number of individual matches expected, since South American
+ * competitions use home-and-away ties — e.g. Libertadores Oitavas = 8
+ * fixtures × 2 legs = 16 matches).
  */
 export const KNOCKOUT_PHASES = {
   wc2026: [
-    { key: "ROUND_OF_32", label: "32-avos", ties: 16 },
-    { key: "ROUND_OF_16", label: "Oitavas de Final", ties: 8 },
-    { key: "QUARTER_FINAL", label: "Quartas de Final", ties: 4 },
-    { key: "SEMI_FINAL", label: "Semifinal", ties: 2 },
-    { key: "THIRD_PLACE", label: "Disputa de 3º Lugar", ties: 1 },
-    { key: "FINAL", label: "Final", ties: 1 }
+    { key: "ROUND_OF_16", label: "16 Avos", ties: 16, matchCount: 16 },
+    { key: "ROUND_OF_8", label: "Oitavas de Final", ties: 8, matchCount: 8 },
+    { key: "QUARTER_FINAL", label: "Quartas de Final", ties: 4, matchCount: 4 },
+    { key: "SEMI_FINAL", label: "Semifinal", ties: 2, matchCount: 2 },
+    { key: "THIRD_PLACE", label: "Disputa de 3º Lugar", ties: 1, matchCount: 1 },
+    { key: "FINAL", label: "Final", ties: 1, matchCount: 1 }
   ],
   libertadores2026: [
-    { key: "ROUND_OF_16", label: "Oitavas de Final", ties: 8 },
-    { key: "QUARTER_FINAL", label: "Quartas de Final", ties: 4 },
-    { key: "SEMI_FINAL", label: "Semifinal", ties: 2 },
-    { key: "FINAL", label: "Final", ties: 1 }
+    // football-data.org exposes no `stage` for Libertadores; we infer from
+    // `round` instead (1-2 = Oitavas, 3-4 = Quartas, 5-6 = Semifinal, 7 = Final).
+    { key: "ROUND_OF_16", label: "Oitavas de Final", ties: 8, matchCount: 16, roundRange: [1, 2] },
+    { key: "QUARTER_FINAL", label: "Quartas de Final", ties: 4, matchCount: 8, roundRange: [3, 4] },
+    { key: "SEMI_FINAL", label: "Semifinal", ties: 2, matchCount: 4, roundRange: [5, 6] },
+    { key: "FINAL", label: "Final", ties: 1, matchCount: 2, roundRange: [7, 7] }
   ],
   sulamericana2026: [
-    { key: "ROUND_OF_16", label: "Oitavas de Final", ties: 8 },
-    { key: "QUARTER_FINAL", label: "Quartas de Final", ties: 4 },
-    { key: "SEMI_FINAL", label: "Semifinal", ties: 2 },
-    { key: "FINAL", label: "Final", ties: 1 }
+    { key: "ROUND_OF_16", label: "Oitavas de Final", ties: 8, matchCount: 16, roundRange: [1, 2] },
+    { key: "QUARTER_FINAL", label: "Quartas de Final", ties: 4, matchCount: 8, roundRange: [3, 4] },
+    { key: "SEMI_FINAL", label: "Semifinal", ties: 2, matchCount: 4, roundRange: [5, 6] },
+    { key: "FINAL", label: "Final", ties: 1, matchCount: 2, roundRange: [7, 7] }
   ],
   copadobrasil2026: [
-    { key: "ROUND_OF_32", label: "32-avos", ties: 16 },
-    { key: "ROUND_OF_16", label: "Oitavas de Final", ties: 8 },
-    { key: "QUARTER_FINAL", label: "Quartas de Final", ties: 4 },
-    { key: "SEMI_FINAL", label: "Semifinal", ties: 2 },
-    { key: "FINAL", label: "Final", ties: 1 }
+    // CBF Copa do Brasil — home-and-away knockout for later rounds.
+    { key: "ROUND_OF_64", label: "1ª Fase", ties: 32, matchCount: 32 },
+    { key: "ROUND_OF_32", label: "2ª Fase", ties: 16, matchCount: 16 },
+    { key: "ROUND_OF_16", label: "16 Avos", ties: 16, matchCount: 16 },
+    { key: "ROUND_OF_8", label: "Oitavas de Final", ties: 8, matchCount: 16 },
+    { key: "QUARTER_FINAL", label: "Quartas de Final", ties: 4, matchCount: 8 },
+    { key: "SEMI_FINAL", label: "Semifinal", ties: 2, matchCount: 4 },
+    { key: "FINAL", label: "Final", ties: 1, matchCount: 2 }
   ]
 };
 
+const NORMALISE = (s) => String(s || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
 /**
- * Map a match's stageName / round / stageId to a knockout phase key.
- * Tries a few common matchings used by APIs / scrapers.
+ * Map a match to a knockout phase key for the competition identified by
+ * `competitionId`. Tries the explicit stage name first (most reliable for
+ * WC/CBF), then falls back to the `round` field for competitions where the
+ * stage is not exposed (Libertadores/Sulamericana via football-data.org).
  */
-export function matchToPhase(match) {
-  const hay = [match.stageName, match.roundName, match.stageId].filter(Boolean).join(" ").toUpperCase();
-  if (!hay) return null;
-  if (/16.*AVOS|16AVOS|ROUND.*OF.*32|R32|FASE.*32/.test(hay)) return "ROUND_OF_32";
-  if (/OITAVAS|ROUND.*OF.*16|R16|FASE.*16/.test(hay)) return "ROUND_OF_16";
-  if (/QUARTAS|QUARTER/.test(hay)) return "QUARTER_FINAL";
-  if (/SEMI/.test(hay)) return "SEMI_FINAL";
-  if (/3.*LUGAR|TERCEIRO|THIRD/.test(hay)) return "THIRD_PLACE";
-  if (/FINAL/.test(hay)) return "FINAL";
+export function matchToPhase(match, competitionId) {
+  const stageHay = NORMALISE([match.stageName, match.roundName, match.stageId].filter(Boolean).join(" "));
+
+  if (competitionId === "wc2026") {
+    // FIFA stage names (pt): "Segundas de final" (16avos), "Oitavas de final",
+    // "Quartas de final", "Semifinal", "Bronze final" (3o lugar), "Final".
+    if (stageHay.includes("SEGUNDAS DE FINAL")) return "ROUND_OF_16";
+    if (stageHay.includes("OITAVAS DE FINAL")) return "ROUND_OF_8";
+    if (stageHay.includes("QUARTAS DE FINAL")) return "QUARTER_FINAL";
+    if (stageHay.includes("SEMIFINAL")) return "SEMI_FINAL";
+    if (stageHay.includes("BRONZE FINAL") || stageHay.includes("TERCEIRO") || stageHay.includes("3 LUGAR")) return "THIRD_PLACE";
+    // Anchored "FINAL" — must NOT match "BRONZE FINAL" — handled above by order.
+    if (/(^|\s)FINAL(\s|$)/.test(stageHay)) return "FINAL";
+  } else {
+    // Generic fallback for other competitions.
+    if (stageHay.includes("16 AVOS") || stageHay.includes("16AVOS") || stageHay.includes("SEGUNDAS DE FINAL")) return "ROUND_OF_16";
+    if (stageHay.includes("OITAVAS DE FINAL") || stageHay.includes("ROUND OF 16") || stageHay.includes("R16")) return "ROUND_OF_8";
+    if (stageHay.includes("QUARTAS DE FINAL") || stageHay.includes("QUARTER")) return "QUARTER_FINAL";
+    if (stageHay.includes("SEMI")) return "SEMI_FINAL";
+    if (stageHay.includes("BRONZE FINAL") || stageHay.includes("TERCEIRO") || stageHay.includes("3 LUGAR")) return "THIRD_PLACE";
+    if (/(^|\s)FINAL(\s|$)/.test(stageHay)) return "FINAL";
+  }
+
+  // Round-based fallback (Libertadores/Sulamericana via football-data.org,
+  // which expose `round` but no `stage`). The competition's phase entries
+  // declare a `roundRange` to map round numbers to phases.
+  if (match.round != null && KNOCKOUT_PHASES[competitionId]) {
+    const round = Number(match.round);
+    if (!Number.isNaN(round)) {
+      const phase = KNOCKOUT_PHASES[competitionId].find((p) => {
+        if (!p.roundRange) return false;
+        return round >= p.roundRange[0] && round <= p.roundRange[1];
+      });
+      if (phase) return phase.key;
+    }
+  }
+
   return null;
 }
 
-/** Group a flat list of matches by knockout phase key. */
-export function groupMatchesByPhase(matches, phases) {
+/** Group a flat list of matches by knockout phase key for a competition. */
+export function groupMatchesByPhase(matches, phases, competitionId) {
   const byPhase = {};
   phases.forEach((p) => { byPhase[p.key] = []; });
   (matches || []).forEach((m) => {
-    const key = matchToPhase(m);
+    const key = matchToPhase(m, competitionId);
     if (key && byPhase[key]) byPhase[key].push(m);
   });
   return byPhase;
