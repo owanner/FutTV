@@ -19,7 +19,7 @@ export default function FlatStandings({ teams, teamLabel, competitionId }) {
         </Stack>
         <Divider sx={{ mx: 2 }} />
         {teams.map((team) => (
-          <Stack key={team.teamId} direction="row" sx={{ width: "100%", py: 1, px: 2, borderLeft: `4px solid ${getPositionColor(team.position, competitionId)}` }}>
+          <Stack key={team.teamId} direction="row" sx={{ width: "100%", py: 1, px: 2, borderLeft: `4px solid ${getPositionColor(team.position, competitionId, team)}` }}>
             <Stack direction="row" spacing={0.75} alignItems="center" sx={{ flex: 1, minWidth: 180, ml: 1, pr: 1, borderRight: "2px solid", borderColor: "rgba(0,0,0,0.08)" }}>
               <Typography variant="body2" sx={{ fontSize: "0.75rem", fontWeight: 700, color: "text.secondary", minWidth: 18 }}>
                 {team.position}

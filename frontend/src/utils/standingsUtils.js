@@ -15,7 +15,24 @@ export function buildGroups(data) {
   return groups;
 }
 
-export function getPositionColor(position, competitionId) {
+export function getPositionColor(position, competitionId, team) {
+  // Prefer the explicit `qualifies` field when available (computed by the
+  // backend per competition). This is required for the World Cup, where the
+  // "best third-placed" rule cannot be derived from `position` alone.
+  if (team && team.qualifies) {
+    switch (team.qualifies) {
+      case "qualified":
+        return "#43a047";   // green
+      case "sulamericana":  // Libertadores 3rd -> Sul-Americana
+      case "best-third":    // World Cup best third-placed
+        return "#fbc02d";   // yellow
+      case "eliminated":
+        return "#e53935";   // red
+      default:
+        break;
+    }
+  }
+
   if (competitionId === "brasileirao2026") {
     // Brasileirão zones
     if (position <= 4) return "#19AE47";      // Libertadores (green)
@@ -25,7 +42,8 @@ export function getPositionColor(position, competitionId) {
     return "#757575";                           // Neutral (gray)
   }
 
-  // Default (World Cup / Libertadores)
+  // Default fallback when `qualifies` is missing (World Cup / Libertadores):
+  // 1st & 2nd -> green, 3rd -> yellow, 4th -> red.
   if (position <= 2) return "#43a047";
   if (position === 3) return "#fbc02d";
   return "#e53935";

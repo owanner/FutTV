@@ -59,7 +59,7 @@ export default function GroupStandings({ groupName, teams, competitionId: propCo
           <Stack
             key={team.teamId}
             direction="row"
-            sx={{ width: "100%", py: 1, px: 1, borderLeft: `4px solid ${getPositionColor(team.position, competitionId)}` }}
+            sx={{ width: "100%", py: 1, px: 1, borderLeft: `4px solid ${getPositionColor(team.position, competitionId, team)}` }}
           >
             <Stack
               direction="row"
