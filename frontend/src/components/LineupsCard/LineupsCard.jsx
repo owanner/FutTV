@@ -2,6 +2,7 @@ import { Box, Card, CardContent, Typography, Divider, Stack, Chip } from "@mui/m
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
+import { normalizeTeamName } from "../../utils/teamUtils";
 
 function getDisplayPlayerName(fullName) {
   if (!fullName) return "";
@@ -164,7 +165,7 @@ export default function LineupsCard({ homeFlag, awayFlag, homeTeam, awayTeam, li
           <TeamColumn
             starters={homeStarters}
             bench={homeBench}
-            teamName={homeTeam || live.HomeTeam?.TeamName?.[0]?.Description}
+            teamName={normalizeTeamName(homeTeam || live.HomeTeam?.TeamName?.[0]?.Description)}
             flag={homeFlag}
             compact={compact}
             accentColor={colors?.primary}
@@ -172,7 +173,7 @@ export default function LineupsCard({ homeFlag, awayFlag, homeTeam, awayTeam, li
           <TeamColumn
             starters={awayStarters}
             bench={awayBench}
-            teamName={awayTeam || live.AwayTeam?.TeamName?.[0]?.Description}
+            teamName={normalizeTeamName(awayTeam || live.AwayTeam?.TeamName?.[0]?.Description)}
             flag={awayFlag}
             compact={compact}
             accentColor={colors?.secondary}

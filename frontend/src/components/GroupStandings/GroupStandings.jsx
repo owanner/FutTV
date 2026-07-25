@@ -1,21 +1,17 @@
 import { Card, CardContent, Typography, Stack, Avatar, Divider, Box } from "@mui/material";
 import { useTheme, useMediaQuery } from "@mui/material";
-import useNav from "../../hooks/useNav";
 import { useCompetition } from "../../contexts/CompetitionContext";
 import { getCompetition } from "../../config/competitions";
-import { abbreviateTeamName } from "../../utils/teamUtils";
+import { abbreviateTeamName, normalizeTeamName } from "../../utils/teamUtils";
 import { getPositionColor, STAT_COLUMNS, CARD_SX } from "../../utils/standingsUtils";
 
 export default function GroupStandings({ groupName, teams, competitionId: propCompetitionId }) {
-  const navigate = useNav();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { competitionId: ctxCompetitionId } = useCompetition();
   const competitionId = propCompetitionId || ctxCompetitionId;
   const comp = getCompetition(competitionId);
   const teamLabel = comp?.teamLabel || "Time";
-  const groupLetter = groupName.replace("Grupo ", "");
-
   return (
     <Card sx={CARD_SX}>
       <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
@@ -23,8 +19,8 @@ export default function GroupStandings({ groupName, teams, competitionId: propCo
           variant="h6"
           fontWeight={700}
           gutterBottom
-          sx={{ cursor: "pointer", "&:hover": { opacity: 0.8 }, px: 2, pt: 2, mb: 0 }}
-          onClick={() => navigate(`/group/${groupLetter}`)}
+          sx={{ px: 2, pt: 2, mb: 0 }}
+          /* onClick={() => navigate(`/group/${groupLetter}`)} — rota /group desativada */
         >
           {groupName}
         </Typography>
@@ -85,16 +81,14 @@ export default function GroupStandings({ groupName, teams, competitionId: propCo
               <Typography
                 variant="body2"
                 sx={{
-                  cursor: "pointer",
                   fontSize: { xs: "0.80rem", md: "0.875rem" },
                   whiteSpace: "nowrap",
                   overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  "&:hover": { textDecoration: "underline" }
+                  textOverflow: "ellipsis"
                 }}
-                onClick={() => navigate(`/team/${team.teamCode}`)}
+                /* onClick={() => navigate(`/team/${team.teamCode}`)} — rota /team desativada */
               >
-                {isMobile ? abbreviateTeamName(team.teamName) : team.teamName}
+                {isMobile ? abbreviateTeamName(team.teamName) : normalizeTeamName(team.teamName)}
               </Typography>
             </Stack>
 

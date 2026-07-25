@@ -8,6 +8,7 @@ import MatchesFilters from "../../components/MatchesFilters/MatchesFilters";
 import PageHeader from "../../components/PageHeader/PageHeader";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
 import { normalizeText } from "../../utils/formatUtils";
+import { normalizeTeamName } from "../../utils/teamUtils";
 import { PageLoader, PageError } from "../../components/PageLoader/PageLoader";
 
 function groupByStatus(matches) {
@@ -36,6 +37,8 @@ export default function Matches() {
     return data.filter(match => {
       const needle = normalizeText(search);
       const matchesSearch =
+        normalizeText(normalizeTeamName(match.homeTeam)).includes(needle) ||
+        normalizeText(normalizeTeamName(match.awayTeam)).includes(needle) ||
         normalizeText(match.homeTeam).includes(needle) ||
         normalizeText(match.awayTeam).includes(needle);
 

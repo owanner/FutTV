@@ -1,4 +1,5 @@
 import { Card, CardContent, Typography, Stack, Avatar, Chip } from "@mui/material";
+import { normalizeTeamName } from "../../utils/teamUtils";
 
 export default function TeamHeader({ team }) {
   let color = "error";
@@ -20,7 +21,7 @@ export default function TeamHeader({ team }) {
         <Stack direction="row" spacing={2} alignItems="center">
           <Avatar src={team.flag} sx={{ width: 64, height: 64 }} />
           <Stack>
-            <Typography variant="h4">{team.teamName}</Typography>
+            <Typography variant="h4">{normalizeTeamName(team.teamName)}</Typography>
             <Typography color="text.secondary">{team.groupName}</Typography>
           </Stack>
         </Stack>

@@ -7,7 +7,7 @@ import { useCompetition } from "../../contexts/CompetitionContext";
 import { useMatches } from "../../hooks/useMatches";
 import { useBracket } from "../../hooks/useBracket";
 import { getStatus } from "../../utils/statusUtils";
-import { abbreviateTeamName } from "../../utils/teamUtils";
+import { abbreviateTeamName, normalizeTeamName } from "../../utils/teamUtils";
 import {
   KNOCKOUT_PHASES,
   groupMatchesByPhase,
@@ -54,7 +54,7 @@ function TeamSide({ team, code, flag, score, winner }) {
           textOverflow: "ellipsis"
         }}
       >
-        {team || abbreviateTeamName(code) || "A definir"}
+        {normalizeTeamName(team) || abbreviateTeamName(code) || "A definir"}
       </Typography>
       {score != null && (
         <Typography variant="body2" sx={{ fontWeight: 800, flexShrink: 0 }}>

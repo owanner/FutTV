@@ -8,215 +8,366 @@ import {
   Typography
 } from "@mui/material";
 
-import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
-import LiveTvOutlinedIcon from "@mui/icons-material/LiveTvOutlined";
 import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
-
-import { sortBroadcasts } from "../../utils/broadcasts";
-import { getStatus } from "../../utils/statusUtils";
-import { abbreviateTeamName } from "../../utils/teamUtils";
+import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
+import LiveTvOutlinedIcon from "@mui/icons-material/LiveTvOutlined";
 
 import dayjs from "dayjs";
+import { sortBroadcasts } from "../../utils/broadcasts";
+import { getStatus } from "../../utils/statusUtils";
+import { abbreviateTeamName, normalizeTeamName } from "../../utils/teamUtils";
 import useNav from "../../hooks/useNav";
 
-function Team({ flag, name, onClick }) {
-  const displayName = abbreviateTeamName(name);
+/* ─── TeamBlock ──────────────────────────────────────────────────────────
+   A symmetric team block: crest centered on top, name centered below.
+   Shared by all MatchCard variants for visual consistency.
+   `size` controls crest dimensions; `dark` flips text colour for the hero.
+─────────────────────────────────────────────────────────────────────────── */
+function TeamBlock({ flag, name, code, size = "md", dark = false, onClick }) {
+  const dims = {
+    sm: { box: [44, 34], img: [34, 26], name: "0.78rem" },
+    md: { box: [56, 42], img: [44, 34], name: "0.85rem" },
+    lg: { box: [72, 54], img: [56, 42], name: "0.95rem" }
+  }[size];
 
-  const hasFlag = Boolean(flag);
+  const handleTeamClick = (e) => {
+    e?.stopPropagation?.();
+    if (onClick) return onClick(e);
+    // if (code) navigate(`/team/${code}`); — rota /team desativada
+  };
 
   return (
     <Stack
       alignItems="center"
       spacing={0.75}
       sx={{
-        width: 90,
-        minWidth: 90,
-        maxWidth: 90,
-
-        display: "flex",
-        justifyContent: "center",
-        textAlign: "center"
-      }}
-    >
-      <Box
-        sx={{
-          width: "100%",
-          display: "flex",
-          justifyContent: "center"
-        }}
-      >
-        <Box
-          sx={{
-            width: 62,
-            height: 48,
-
-            mx: "auto",
-
-            display: "grid",
-            placeItems: "center",
-
-            borderRadius: 1.5,
-            backgroundColor: "#F8FAFC",
-            border: "1px solid rgba(16, 32, 29, 0.08)"
-          }}
-        >
-
-          {hasFlag ? (
-            <Box
-              component="img"
-              src={flag}
-              alt={name || "Time"}
-              sx={{
-                width: 46,
-                height: 36,
-                objectFit: "contain"
-              }}
-            />
-          ) : (
-            <FlagOutlinedIcon sx={{ color: "text.secondary", fontSize: 28 }} />
-          )}
-        </Box>
-      </Box>
-      <Typography
-        component="span"
-        role="button"
-        tabIndex={0}
-        onClick={onClick}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            onClick(event);
-          }
-        }}
-        sx={{
-          width: "100%",
-
-          color: "text.primary",
-          cursor: "pointer",
-
-          fontWeight: 800,
-          fontSize: "0.95rem",
-          lineHeight: 1.1,
-
-          textAlign: "center",
-
-          overflow: "hidden",
-
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-
-          outline: "none",
-
-          "&:hover": {
-            color: "primary.main"
-          },
-
-          "&:focus-visible": {
-            color: "primary.main",
-            textDecoration: "underline"
-          }
-        }}
-      >
-        {displayName}
-      </Typography>
-
-    </Stack>
-  );
-}
-
-function MetaItem({ icon, logo, children }) {
-  return (
-    <Stack
-      direction="row"
-      spacing={1}
-      alignItems="center"
-      sx={{
+        flex: 1,
         minWidth: 0,
-        color: "text.secondary",
-        minHeight: 20
+        maxWidth: { xs: 110, sm: 120 },
+        textAlign: "center",
+        cursor: onClick ? "pointer" : "default"
       }}
+      onClick={handleTeamClick}
     >
       <Box
         sx={{
-          width: 28,
-          minWidth: 28,
-          height: 18,
-
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-
+          width: dims.box[0],
+          height: dims.box[1],
+          display: "grid",
+          placeItems: "center",
+          borderRadius: 1.5,
+          backgroundColor: dark ? "rgba(255,255,255,0.10)" : "#F8FAFC",
+          border: dark
+            ? "1px solid rgba(255,255,255,0.18)"
+            : "1px solid rgba(16,32,29,0.08)",
+          boxShadow: dark ? "0 4px 16px rgba(0,0,0,0.18)" : "none",
           flexShrink: 0
         }}
       >
-        {logo ? (
+        {flag ? (
           <Box
             component="img"
-            src={logo}
-            alt=""
-            sx={{
-              maxWidth: 28,
-              maxHeight: 18,
-              objectFit: "contain"
-            }}
+            src={flag}
+            alt={name || "Time"}
+            sx={{ width: dims.img[0], height: dims.img[1], objectFit: "contain" }}
           />
         ) : (
-          icon
+          <FlagOutlinedIcon sx={{ color: dark ? "rgba(255,255,255,0.45)" : "text.secondary", fontSize: size === "lg" ? 30 : 24 }} />
         )}
       </Box>
-
       <Typography
-        variant="caption"
         sx={{
-          minWidth: 0,
-
-          display: "flex",
-          alignItems: "center",
-
-          lineHeight: 1.2,
-
+          fontWeight: 800,
+          fontSize: dims.name,
+          lineHeight: 1.1,
+          textAlign: "center",
           overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap"
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          color: dark ? "#fff" : "text.primary",
+          width: "100%",
+          "&:hover": dark ? {} : { color: code ? "primary.main" : "inherit" }
         }}
       >
-        {children}
+        {abbreviateTeamName(normalizeTeamName(name))}
       </Typography>
     </Stack>
   );
 }
 
-export default function MatchCard({
-  match
-}) {
-  const navigate = useNav();
-  const status = getStatus(match.status);
-  const broadcasts =
-    sortBroadcasts(
-      match.broadcasts || []
-    );
-  const hasScore =
-    match.status === 0 ||
-    match.status === 3;
+/* ─── ScoreBlock ─────────────────────────────────────────────────────────
+   Center column: score (or VS) + kickoff time.
+   `large` makes the score bigger for the hero variant.
+─────────────────────────────────────────────────────────────────────────── */
+function ScoreBlock({ match, hasScore, large = false, dark = false }) {
+  const scoreSize = large
+    ? { xs: "1.9rem", sm: "2.4rem" }
+    : { xs: "1.15rem", sm: "1.25rem" };
 
+  return (
+    <Stack
+      alignItems="center"
+      spacing={0.5}
+      sx={{ minWidth: large ? { xs: 90, sm: 120 } : 64, flexShrink: 0 }}
+    >
+      <Typography
+        align="center"
+        sx={{
+          fontSize: scoreSize,
+          fontWeight: 900,
+          lineHeight: 1,
+          letterSpacing: -1,
+          color: dark ? "#fff" : hasScore ? "text.primary" : "primary.main"
+        }}
+      >
+        {hasScore ? `${match.homeScore ?? 0} – ${match.awayScore ?? 0}` : "VS"}
+      </Typography>
+      <Typography
+        variant="caption"
+        align="center"
+        sx={{
+          color: dark ? "rgba(255,255,255,0.6)" : "text.secondary",
+          fontWeight: 700,
+          fontSize: large ? "0.78rem" : "0.7rem"
+        }}
+      >
+        {dayjs(match.date).format("HH:mm")}
+      </Typography>
+    </Stack>
+  );
+}
+
+/* ─── HeaderBar ───────────────────────────────────────────────────────────
+   Top row: competition badge (left) + status chip (right). Optional date.
+   On `hero` variant the layout swaps to centered stage + status on right.
+─────────────────────────────────────────────────────────────────────────── */
+function HeaderBar({ match, status, align = "space-between", dark = false }) {
   const compName = match.competitionName;
   const compColors = match.competitionColors;
 
-  function openTeam(event, code) {
-    event.stopPropagation();
+  return (
+    <Stack
+      direction="row"
+      justifyContent={align}
+      alignItems="center"
+      spacing={1}
+      sx={{ width: "100%" }}
+    >
+      {compName && (
+        <Chip
+          size="small"
+          label={compName}
+          sx={{
+            height: 20,
+            fontSize: "0.62rem",
+            fontWeight: 700,
+            color: dark ? "#fff" : "#fff",
+            bgcolor: compColors?.primary || "#666",
+            ".MuiChip-label": { px: 0.75 }
+          }}
+        />
+      )}
+      <Stack direction="row" spacing={0.75} alignItems="center" sx={{ ml: "auto" }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: dark ? "rgba(255,255,255,0.7)" : "text.secondary",
+            fontWeight: 700,
+            fontSize: "0.68rem"
+          }}
+        >
+          {dayjs(match.date).format("DD MMM")}
+        </Typography>
+        <Chip
+          size="small"
+          label={status.label}
+          sx={{
+            height: 20,
+            fontSize: "0.62rem",
+            fontWeight: 700,
+            color: status.color,
+            bgcolor: status.background
+          }}
+        />
+      </Stack>
+    </Stack>
+  );
+}
 
-    if (code) {
-      navigate(`/team/${code}`);
-    }
+/* ─── FooterMeta ──────────────────────────────────────────────────────────
+   Bottom meta: stadium (when present) + broadcasts. Hidden on the `row`
+   variant for a more compact footprint.
+─────────────────────────────────────────────────────────────────────────── */
+function FooterMeta({ match, broadcasts, dark = false }) {
+  const staged = match.groupName || match.stageName;
+  const trim = broadcasts.slice(0, 3);
+
+  if (!staged && !match.stadium && trim.length === 0) return null;
+
+  const muted = dark ? "rgba(255,255,255,0.55)" : "text.secondary";
+
+  return (
+    <Stack
+      spacing={0.75}
+      sx={{
+        pt: 1,
+        borderTop: dark ? "1px solid rgba(255,255,255,0.12)" : "1px solid",
+        borderColor: dark ? undefined : "divider"
+      }}
+    >
+      {staged && (
+        <Typography
+          variant="caption"
+          align="center"
+          sx={{ color: muted, fontWeight: 600, fontSize: "0.7rem" }}
+        >
+          {staged}
+        </Typography>
+      )}
+      {match.stadium && (
+        <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center" sx={{ color: muted }}>
+          <LocationOnOutlinedIcon sx={{ fontSize: 13 }} />
+          <Typography variant="caption" sx={{ fontWeight: 500, fontSize: "0.7rem" }}>
+            {match.stadium}
+          </Typography>
+        </Stack>
+      )}
+      {trim.length > 0 && (
+        <Stack direction="row" spacing={0.5} justifyContent="center" alignItems="center" flexWrap="wrap" useFlexGap>
+          <LiveTvOutlinedIcon sx={{ fontSize: 14, color: muted }} />
+          {trim.map((b) => (
+            <Chip
+              key={b.id}
+              size="small"
+              label={b.name}
+              sx={{
+                height: 18,
+                fontSize: "0.6rem",
+                fontWeight: 600,
+                bgcolor: dark ? "rgba(255,255,255,0.10)" : "grey.100",
+                color: dark ? "rgba(255,255,255,0.85)" : undefined
+              }}
+              icon={b.logo ? (
+                <Box component="img" src={b.logo} alt="" sx={{ width: 12, height: 12, ml: 0.5 }} />
+              ) : undefined}
+            />
+          ))}
+          {broadcasts.length > 3 && (
+            <Typography variant="caption" sx={{ color: muted, fontWeight: 600, fontSize: "0.62rem" }}>
+              +{broadcasts.length - 3}
+            </Typography>
+          )}
+        </Stack>
+      )}
+    </Stack>
+  );
+}
+
+/* ─── MatchCard ──────────────────────────────────────────────────────────
+   Unified match-card component. All variants share the same symmetric
+   layout: crests horizontally centered, team names below, score in the
+   middle. Variants:
+     - "grid" : compact card for matches/competition grids (default)
+     - "row"  : compact horizontal-scroll card (Home/upcoming rail)
+     - "hero" : large dark-gradient card (MatchDetails hero)
+   All variants render a clickable CardActionArea navigating to /match/:id.
+─────────────────────────────────────────────────────────────────────────── */
+export default function MatchCard({ match, variant = "grid", size, colors, onClick, noAction = false }) {
+  const navigate = useNav();
+  const status = getStatus(match.status);
+  const broadcasts = sortBroadcasts(match.broadcasts || []);
+  const showScore = match.status === 0 || match.status === 3;
+
+  const teamSize = size || (variant === "hero" ? "lg" : variant === "row" ? "sm" : "md");
+
+  const handleClick = noAction
+    ? undefined
+    : onClick
+      ? (e) => { e?.stopPropagation?.(); onClick(e); }
+      : () => navigate(`/match/${match.id}`);
+
+  /* ───── Hero variant: large dark gradient ───── */
+  if (variant === "hero") {
+    const c = colors || match.competitionColors || { primary: "#1a1a1a", secondary: "#1a1a1a" };
+    const gradient = `linear-gradient(135deg, ${c.secondary || "#1a1a1a"} 0%, ${c.secondary || "#1a1a1a"}cc 45%, ${c.primary} 100%)`;
+
+    const Wrapper = noAction ? Box : CardActionArea;
+    const wrapperProps = noAction
+      ? {}
+      : { onClick: handleClick, sx: { "&:hover": { backgroundColor: "transparent" } } };
+
+    return (
+      <Card
+        sx={{
+          width: "100%",
+          overflow: "hidden",
+          borderRadius: 3,
+          boxShadow: `0 12px 40px ${c.primary || "#000"}28`,
+          border: "1px solid rgba(255,255,255,0.06)",
+          background: gradient,
+          color: "#fff"
+        }}
+      >
+        <Wrapper {...wrapperProps} sx={{ ...(wrapperProps.sx || {}), p: { xs: 2.5, sm: 3.5 } }}>
+          <Stack spacing={2.5} sx={{ width: "100%" }}>
+            {/* Stage label centered + status chip */}
+            <Stack direction="row" justifyContent="center" alignItems="center" spacing={1.5}>
+              <Typography
+                variant="caption"
+                sx={{ fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.7)" }}
+              >
+                {match.groupName || match.stageName || "Partida"}
+              </Typography>
+              <Chip
+                label={status.label}
+                size="small"
+                sx={{
+                  height: 22,
+                  fontSize: "0.68rem",
+                  fontWeight: 700,
+                  bgcolor: status.background,
+                  color: status.color,
+                  border: "1px solid rgba(255,255,255,0.15)"
+                }}
+              />
+            </Stack>
+
+            {/* Teams + score */}
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto 1fr",
+                alignItems: "center",
+                justifyItems: "center",
+                gap: { xs: 1, sm: 2, md: 3 }
+              }}
+            >
+              <TeamBlock flag={match.homeFlag} name={match.homeTeam} code={match.homeCode} size={teamSize} dark />
+              <ScoreBlock match={match} hasScore={showScore} large dark />
+              <TeamBlock flag={match.awayFlag} name={match.awayTeam} code={match.awayCode} size={teamSize} dark />
+            </Box>
+
+            {/* Footer */}
+            <FooterMeta match={match} broadcasts={broadcasts} dark />
+          </Stack>
+        </Wrapper>
+      </Card>
+    );
   }
+
+  /* ───── grid & row variants ───── */
+  const isRow = variant === "row";
 
   return (
     <Card
       sx={{
         width: "100%",
-        maxWidth: 320,
-        height: 260,
-        mx: "auto",
+        height: isRow ? 200 : "100%",
+        minWidth: isRow ? 280 : "unset",
+        flex: isRow ? "0 0 auto" : "unset",
+        mx: isRow ? 0 : "auto",
+        maxWidth: isRow ? 320 : 360,
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
@@ -224,21 +375,19 @@ export default function MatchCard({
         boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
         "&:hover": {
           transform: "translateY(-2px)",
-          boxShadow: "0 8px 18px rgba(81, 81, 81, 0.19)"
+          boxShadow: "0 8px 18px rgba(81, 81, 81, 0.16)"
         }
       }}
     >
       <CardActionArea
-        onClick={() => navigate(`/match/${match.id}`)}
+        onClick={handleClick}
         sx={{
           height: "100%",
           width: "100%",
           display: "flex",
           flexDirection: "column",
           p: 0,
-          "&:hover": {
-            backgroundColor: "transparent"
-          }
+          "&:hover": { backgroundColor: "transparent" }
         }}
       >
         <CardContent
@@ -250,198 +399,29 @@ export default function MatchCard({
             justifyContent: "space-between",
             p: 1.5,
             height: "100%",
-            overflow: "hidden",
+            overflow: "hidden"
           }}
         >
-          <Stack spacing={0.5}>
-            {compName && (
-              <Chip
-                size="small"
-                label={compName}
-                sx={{
-                  alignSelf: "flex-start",
-                  height: 20,
-                  fontSize: "0.62rem",
-                  fontWeight: 700,
-                  color: "#fff",
-                  bgcolor: compColors?.primary || "#666",
-                  ".MuiChip-label": { px: 0.75 }
-                }}
-              />
-            )}
-
-            <Stack
-              direction="row"
-              justifyContent="center"
-              alignItems="center"
-              spacing={2}
-            >
-              <Box
-                sx={{
-                  minWidth: 0
-                }}
-              >
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: "text.secondary",
-                    fontWeight: 800,
-                    textTransform: "uppercase"
-                  }}
-                >
-                  {dayjs(match.date).format("DD MMM")}
-                </Typography>
-
-                <Typography
-                  variant="subtitle2"
-                  sx={{
-                    mt: 0.2,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap"
-                  }}
-                >
-                  {match.groupName || match.stageName || "Partida"}
-                </Typography>
-              </Box>
-
-              <Chip
-                size="small"
-                label={status.label}
-                sx={{
-                  flexShrink: 0,
-                  color: status.color,
-                  bgcolor: status.background
-                }}
-              />
-            </Stack>
-          </Stack>
-
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)",
-              alignItems: "center",
-              justifyItems: "center",
-              py: 1.5,
-              overflow: "visible"
-            }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                width: "100%",
-                minWidth: 0
-              }}
-            >
-              <Team
-                flag={match.homeFlag}
-                name={match.homeTeam}
-                onClick={(event) => openTeam(event, match.homeCode)}
-              />
-            </Box>
+          <Stack spacing={1.5} sx={{ flex: 1 }}>
+            <HeaderBar match={match} status={status} align="space-between" />
 
             <Box
               sx={{
-                display: "flex",
-                justifyContent: "center",
+                display: "grid",
+                gridTemplateColumns: "1fr auto 1fr",
                 alignItems: "center",
-                px: 1,
-                minWidth: 0
+                justifyItems: "center",
+                gap: 1,
+                py: 1
               }}
             >
-              <Stack
-                alignItems="center"
-                spacing={0.5}
-                sx={{
-                  width: 70,
-                  flexShrink: 0
-                }}
-              >
-                <Typography
-                  align="center"
-                  sx={{
-                    color: hasScore
-                      ? "text.primary"
-                      : "primary.main",
-                    fontSize: hasScore
-                      ? "1.35rem"
-                      : "0.9rem",
-                    lineHeight: 1,
-                    fontWeight: 900
-                  }}
-                >
-                  {hasScore
-                    ? `${match.homeScore ?? 0} x ${match.awayScore ?? 0}`
-                    : "VS"}
-                </Typography>
-
-                <Typography
-                  variant="caption"
-                  align="center"
-                  sx={{
-                    color: "text.secondary",
-                    fontWeight: 700
-                  }}
-                >
-                  {dayjs(match.date).format("HH:mm")}
-                </Typography>
-              </Stack>
+              <TeamBlock flag={match.homeFlag} name={match.homeTeam} code={match.homeCode} size={teamSize} />
+              <ScoreBlock match={match} hasScore={showScore} />
+              <TeamBlock flag={match.awayFlag} name={match.awayTeam} code={match.awayCode} size={teamSize} />
             </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                width: "100%"
-              }}
-            >
-              <Team
-                flag={match.awayFlag}
-                name={match.awayTeam}
-                onClick={(event) => openTeam(event, match.awayCode)}
-              />
-            </Box>
-          </Box>
-
-          <Stack
-            spacing={0.5}
-            sx={{
-              pt: 1,
-              borderTop: "1px solid",
-              borderColor: "divider",
-              flexShrink: 0,
-              maxHeight: "fit-content",
-            }}
-          >
-            <MetaItem
-              icon={
-                <AccessTimeOutlinedIcon
-                  sx={{
-                    fontSize: 18,
-                    color: "text.secondary"
-                  }}
-                />
-              }>
-              {dayjs(match.date).format("DD/MM/YYYY HH:mm")}
-            </MetaItem>
-
-            {broadcasts.length > 0 && (
-              <MetaItem
-                icon={<LiveTvOutlinedIcon
-                  sx={{
-                    fontSize: 18,
-                    color: "text.secondary"
-                  }}
-                />}
-                logo={broadcasts[0]?.logo}
-              >
-                {broadcasts[0].name}
-                {broadcasts.length > 1
-                  ? ` +${broadcasts.length - 1}`
-                  : ""}
-              </MetaItem>
-            )}
           </Stack>
+
+          {!isRow && <FooterMeta match={match} broadcasts={broadcasts} />}
         </CardContent>
       </CardActionArea>
     </Card>

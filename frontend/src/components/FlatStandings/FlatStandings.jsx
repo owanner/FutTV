@@ -1,5 +1,6 @@
 import { Stack, Card, CardContent, Box, Typography, Avatar, Divider } from "@mui/material";
 import { CARD_SX, getPositionColor, STAT_COLUMNS } from "../../utils/standingsUtils";
+import { normalizeTeamName } from "../../utils/teamUtils";
 
 export default function FlatStandings({ teams, teamLabel, competitionId }) {
   return (
@@ -26,7 +27,7 @@ export default function FlatStandings({ teams, teamLabel, competitionId }) {
               </Typography>
               <Avatar src={team.flag} alt={team.teamName} sx={{ width: 20, height: 20, flexShrink: 0 }} />
               <Typography variant="body2" sx={{ fontSize: "0.85rem", fontWeight: 500 }}>
-                {team.teamName}
+                {normalizeTeamName(team.teamName)}
               </Typography>
             </Stack>
             {STAT_COLUMNS.map((col) => (
