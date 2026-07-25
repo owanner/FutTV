@@ -5,16 +5,31 @@
  * The CBF website embeds match data as JSON in the React Server Components payload.
  * The "canais" field contains a comma-separated string of broadcast channels.
  *
- * URL pattern:
- * /futebol-brasileiro/jogos/campeonato-brasileiro/serie-a/2026/{home-slug}-x-{away-slug}/{match-id}
+ * URL patterns (per competition):
+ *   - Brasileirão Série A:
+ *       /futebol-brasileiro/jogos/campeonato-brasileiro/serie-a/2026/{home-slug}-x-{away-slug}/{match-id}
+ *   - Copa do Brasil:
+ *       /futebol-brasileiro/jogos/copa-do-brasil/masculino/2026/{home-slug}-x-{away-slug}/{match-id}
  */
 
 const axios = require("axios");
 const { normalizeText } = require("../utils/textUtils");
 
-const CBF_WEBSITE_BASE = "https://www.cbf.com.br/futebol-brasileiro/jogos/campeonato-brasileiro/serie-a/2026";
 const REQUEST_TIMEOUT_MS = 10000;
 const REQUEST_DELAY_MS = 200;
+
+/**
+ * Per-competition CBF website path prefix (without the host) used to build
+ * match-page URLs. New CBF-hosted competitions should be registered here.
+ */
+const COMPETITION_PATHS = {
+  brasileirao2026: "/futebol-brasileiro/jogos/campeonato-brasileiro/serie-a/2026",
+  copadobrasil2026: "/futebol-brasileiro/jogos/copa-do-brasil/masculino/2026"
+};
+
+function getCompetitionPath(competitionId) {
+  return COMPETITION_PATHS[competitionId] || COMPETITION_PATHS.brasileirao2026;
+}
 
 /**
  * Convert a team name to a URL-friendly slug.
@@ -33,8 +48,9 @@ function slugifyTeamName(name) {
  * Scrape a single CBF match page and extract the broadcast channels.
  * Returns an array of channel name strings, or empty array if not found.
  */
-async function scrapeMatchPage(matchId, homeSlug, awaySlug) {
-  const url = `${CBF_WEBSITE_BASE}/${homeSlug}-x-${awaySlug}/${matchId}`;
+async function scrapeMatchPage(matchId, homeSlug, awaySlug, competitionId) {
+  const base = getCompetitionPath(competitionId);
+  const url = `https://www.cbf.com.br${base}/${homeSlug}-x-${awaySlug}/${matchId}`;
 
   try {
     const { data: html } = await axios.get(url, {
@@ -46,7 +62,8 @@ async function scrapeMatchPage(matchId, homeSlug, awaySlug) {
       httpsAgent: new (require("https").Agent)({ rejectUnauthorized: false })
     });
 
-    // Extract canais from React Server Components payload
+    // Extract canais from React Server Components payload.
+    // The JSON payload contains `"canais":"Amazon Prime, GE TV, ..."`
     const pattern = /canais[\\"]+:[\\"]+([^\\"]+)/;
     const match = html.match(pattern);
     if (!match || !match[1]) return [];
@@ -56,14 +73,14 @@ async function scrapeMatchPage(matchId, homeSlug, awaySlug) {
       .map(ch => ch.trim())
       .filter(ch => ch.length > 0);
   } catch (error) {
-    console.warn(`  ⚠ Erro ao acessar página do jogo ${matchId}: ${error.message}`);
+    console.warn(`  ⚠ Erro ao acessar página do jogo ${matchId} (${competitionId}): ${error.message}`);
     return [];
   }
 }
 
 /**
  * Scrape broadcast data for all provided matches.
- * Each match should have { id, homeTeam, awayTeam }.
+ * Each match should have { id, competitionId, homeTeam, awayTeam }.
  * Returns array of { matchId, broadcasts: [{ name }] }.
  */
 async function getAllBroadcasts(matches) {
@@ -78,7 +95,7 @@ async function getAllBroadcasts(matches) {
 
     // Extract numeric ID from "cbf_832121" format
     const numericId = match.id.replace("cbf_", "");
-    const channels = await scrapeMatchPage(numericId, homeSlug, awaySlug);
+    const channels = await scrapeMatchPage(numericId, homeSlug, awaySlug, match.competitionId);
 
     if (channels.length > 0) {
       results.push({
@@ -96,4 +113,4 @@ async function getAllBroadcasts(matches) {
   return results;
 }
 
-module.exports = { slugifyTeamName, scrapeMatchPage, getAllBroadcasts };
+module.exports = { slugifyTeamName, scrapeMatchPage, getAllBroadcasts, getCompetitionPath, COMPETITION_PATHS };

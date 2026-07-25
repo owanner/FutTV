@@ -14,6 +14,7 @@ const syncMatches = require("./cron/syncMatches");
 const syncStandings = require("./cron/syncStandings");
 const syncLibertadoresBroadcasts = require("./cron/syncLibertadoresBroadcasts");
 const syncBrasileiraoBroadcasts = require("./cron/syncBrasileiraoBroadcasts");
+const syncCopaDoBrasilBroadcasts = require("./cron/syncCopaDoBrasilBroadcasts");
 
 const competitionsRoutes = require("./routes/competitions");
 const matchesRoutes = require("./routes/matches");
@@ -55,16 +56,19 @@ const guardedSyncMatches = withGuard(syncMatches);
 const guardedSyncStandings = withGuard(syncStandings);
 const guardedSyncLibertadoresBroadcasts = withGuard(syncLibertadoresBroadcasts);
 const guardedSyncBrasileiraoBroadcasts = withGuard(syncBrasileiraoBroadcasts);
+const guardedSyncCopaDoBrasilBroadcasts = withGuard(syncCopaDoBrasilBroadcasts);
 
 guardedSyncMatches();
 guardedSyncStandings();
 guardedSyncLibertadoresBroadcasts();
 guardedSyncBrasileiraoBroadcasts();
+guardedSyncCopaDoBrasilBroadcasts();
 
 cron.schedule("*/5 * * * *", guardedSyncMatches);
 cron.schedule("4-59/15 * * * *", guardedSyncStandings);
 cron.schedule("9-59/30 * * * *", guardedSyncLibertadoresBroadcasts);
 cron.schedule("19-49/30 * * * *", guardedSyncBrasileiraoBroadcasts);
+cron.schedule("14-44/30 * * * *", guardedSyncCopaDoBrasilBroadcasts);
 
 app.get("/", (req, res) => {
   res.json({ app: "Fut-TV", status: "online" });
