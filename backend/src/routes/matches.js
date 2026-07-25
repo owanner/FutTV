@@ -30,6 +30,68 @@ router.get("/", async (req, res) => {
   }
 });
 
+/**
+ * Knockout stage ordering. Stages are sorted by this map (lowest first).
+ * Unknown stages fall back to a high number so they appear last.
+ */
+const STAGE_ORDER = [
+  "Primeira Fase",
+  "Segunda Fase",
+  "Terceira Fase",
+  "Repescagem",
+  "2ª Fase",
+  "3ª Fase",
+  "Oitavas de Final",
+  "8th Finals",
+  "Quartas de Final",
+  "Quarter-finals",
+  "Semifinal",
+  "Semi-finals",
+  "Final",
+  "Finals"
+];
+function stageOrderIndex(name) {
+  const i = STAGE_ORDER.indexOf(name);
+  return i === -1 ? 999 : i;
+}
+
+/**
+ * GET /matches/stages — group matches by stage for knockout competitions.
+ * Returns { stages: [{ name, matches: [...] }] } ordered by stage order.
+ */
+router.get("/stages", async (req, res) => {
+  try {
+    const matches = await prisma.match.findMany({
+      where: { status: { not: STATUS.CANCELLED }, ...competitionFilter(req) },
+      include: { broadcasts: true },
+      orderBy: { date: "asc" }
+    });
+
+    // Only keep knockout-style stages — exclude group stage matches.
+    const GROUP_STAGES = new Set(["Fase de Grupos", "Group Stage", "1ª Fase"]);
+    const knockoutMatches = matches.filter((m) => {
+      const stage = m.stageName || m.stageId || "";
+      return stage && !GROUP_STAGES.has(stage);
+    });
+
+    const groups = {};
+    for (const m of knockoutMatches) {
+      const stage = m.stageName || "Outros";
+      if (!groups[stage]) groups[stage] = [];
+      groups[stage].push(m);
+    }
+
+    const stages = Object.entries(groups)
+      .map(([name, list]) => ({ name, order: stageOrderIndex(name), matches: list }))
+      .sort((a, b) => a.order - b.order);
+
+    res.json({ stages });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao buscar fases mata-mata" });
+  }
+});
+
 router.get("/upcoming", async (req, res) => {
   try {
     const matches = await prisma.match.findMany({

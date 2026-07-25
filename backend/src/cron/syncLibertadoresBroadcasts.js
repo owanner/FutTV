@@ -1,10 +1,12 @@
 /**
- * Libertadores broadcast synchronization.
- * Scrapes gol.conmebol.com for broadcast data and matches it to existing DB records.
+ * CONMEBOL broadcast synchronization.
+ * Scrapes gol.conmebol.com for broadcast data and matches it to existing
+ * DB records, for both Libertadores and Sulamericana.
  */
 
 const prisma = require("../database/prisma");
 const conmebolScraper = require("../services/conmebolScraper");
+const { competitions } = require("../config/competitions");
 const { normalizeText } = require("../utils/textUtils");
 
 /**
@@ -58,18 +60,21 @@ function findBestMatch(scraped, dbMatches) {
   return bestScore >= 3 ? bestMatch : null;
 }
 
-async function syncLibertadoresBroadcasts() {
-  try {
-    console.log("\n📺 [Libertadores] Sincronizando transmissões...");
+async function syncCompetitionBroadcasts(comp) {
+  const slug = comp.config.conmebolSlug;
+  if (!slug) return;
 
-    const scraped = await conmebolScraper.getAllBroadcasts();
-    console.log(`[Libertadores] ${scraped.length} partidas com transmissões raspadas`);
+  try {
+    console.log(`\n📺 [${comp.shortName}] Sincronizando transmissões...`);
+
+    const scraped = await conmebolScraper.getAllBroadcasts(slug);
+    console.log(`[${comp.shortName}] ${scraped.length} partidas com transmissões raspadas`);
 
     const dbMatches = await prisma.match.findMany({
-      where: { competitionId: "libertadores2026" },
+      where: { competitionId: comp.id },
       include: { broadcasts: true }
     });
-    console.log(`[Libertadores] ${dbMatches.length} partidas no banco de dados`);
+    console.log(`[${comp.shortName}] ${dbMatches.length} partidas no banco de dados`);
 
     let matched = 0;
     let unmatched = 0;
@@ -102,9 +107,19 @@ async function syncLibertadoresBroadcasts() {
       created += item.broadcasts.length;
     }
 
-    console.log(`✅ [Libertadores] Transmissões: ${matched} partidas correspondidas, ${unmatched} sem correspondência, ${created} canais criados\n`);
+    console.log(`✅ [${comp.shortName}] Transmissões: ${matched} correspondidas, ${unmatched} sem correspondência, ${created} canais criados\n`);
   } catch (error) {
-    console.error("❌ [Libertadores] Erro ao sincronizar transmissões:", error.message);
+    console.error(`❌ [${comp.shortName}] Erro ao sincronizar transmissões:`, error.message);
+  }
+}
+
+async function syncLibertadoresBroadcasts() {
+  // Sync broadcasts for every competition backed by CONMEBOL scraping
+  // (Libertadores + Sulamericana).
+  for (const comp of competitions) {
+    if (comp.apiProvider !== "conmebol" && comp.apiProvider !== "football-data") continue;
+    if (!comp.config.conmebolSlug) continue;
+    await syncCompetitionBroadcasts(comp);
   }
 }
 

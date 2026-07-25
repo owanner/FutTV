@@ -26,6 +26,27 @@ const competitions = [
     }
   },
   {
+    id: "copadobrasil2026",
+    name: "Copa do Brasil 2026",
+    shortName: "Copa do Brasil",
+    slug: "copa-do-brasil",
+    apiProvider: "cbf",
+    config: {
+      cbfCompetitionId: "1260615",
+      footballDataLeagueId: null,
+      footballDataSeason: 2026
+    },
+    format: "knockout",
+    colors: {
+      primary: "#1565C0",
+      secondary: "#FFD600",
+      accent: "#FFFFFF",
+      gradient: "linear-gradient(90deg, #1565C0 0%, #FFD600 100%)",
+      background: "#F5F8FE",
+      paper: "#FFFFFF"
+    }
+  },
+  {
     id: "libertadores2026",
     name: "Copa Libertadores 2026",
     shortName: "Libertadores",
@@ -35,8 +56,10 @@ const competitions = [
       footballDataLeagueId: "CLI",
       footballDataSeason: 2026,
       conmebolTournamentId: "15",
-      conmebolCompetitionId: "13"
+      conmebolCompetitionId: "13",
+      conmebolSlug: "libertadores"
     },
+    format: "groups-then-knockout",
     colors: {
       primary: "#D4AF37",
       secondary: "#1a1a1a",
@@ -47,8 +70,30 @@ const competitions = [
     }
   },
   {
+    id: "sulamericana2026",
+    name: "Copa Sulamericana 2026",
+    shortName: "Sulamericana",
+    slug: "sulamericana",
+    apiProvider: "conmebol",
+    config: {
+      conmebolSlug: "sudamericana",
+      conmebolTournamentId: "16",
+      conmebolCompetitionId: "14",
+      fixtureIdRange: { start: 680, end: 1800 }
+    },
+    format: "groups-then-knockout",
+    colors: {
+      primary: "#006A4E",
+      secondary: "#00A862",
+      accent: "#FFFFFF",
+      gradient: "linear-gradient(90deg, #006A4E 0%, #00A862 100%)",
+      background: "#F4FBF8",
+      paper: "#FFFFFF"
+    }
+  },
+  {
     id: "wc2026",
-    name: "Copa do Mundo 2026",
+    name: "Copa do Mundo FIFA 2026",
     shortName: "Copa 2026",
     slug: "world-cup",
     apiProvider: "fifa",
@@ -57,6 +102,7 @@ const competitions = [
       seasonId: "285023",
       groupStageId: "289273"
     },
+    format: "groups-then-knockout",
     colors: {
       primary: "#2A398D",
       secondary: "#3CAC3B",
@@ -74,6 +120,7 @@ function getAllCompetitions() {
     name: c.name,
     shortName: c.shortName,
     slug: c.slug,
+    format: c.format || "groups",
     colors: c.colors
   }));
 }

@@ -60,19 +60,67 @@ function inferStatus(match) {
 }
 
 /**
+ * Map a CBF competition to a friendly stage name based on rodada.
+ * Used by knockout competitions like the Copa do Brasil.
+ *
+ * CBF Copa do Brasil 2026 uses:
+ *   rodada 1 = Primeira Fase (118 jogos mata-mata)
+ *   rodada 2 = Segunda Fase (24 jogos)
+ *   ... higher rounds = oitavas/quartas/semi/final (added over time)
+ */
+function inferCbrStage(round, competitionId) {
+  if (competitionId !== "copadobrasil2026" || !round) return null;
+  const r = parseInt(round);
+  const STAGES = {
+    1: "Primeira Fase",
+    2: "Segunda Fase",
+    3: "Terceira Fase",
+    4: "Oitavas de Final",
+    5: "Quartas de Final",
+    6: "Semifinal",
+    7: "Final"
+  };
+  return STAGES[r] || `Rodada ${r}`;
+}
+
+/**
  * Build match data in our DB format from a CBF API match object.
  */
 function buildMatchData(match, compId, seasonId) {
   const status = inferStatus(match);
   const isFinished = status === 0;
 
+  // Parse scores — Copa do Brasil and knockouts may go to penalties
+  const homeGoals = parseInt(match.mandante?.gols);
+  const awayGoals = parseInt(match.visitante?.gols);
+  const homePens = parseInt(match.mandante?.panaltis);
+  const awayPens = parseInt(match.visitante?.panaltis);
+
+  // For knockout finals, the official score includes penalties.
+  // We store the regular-time score in homeScore/awayScore, and the
+  // penalty shoot-out score in the `panaltis`-prefixed fields below via
+  // stadium note (kept simple — future schema add could store pens).
+  let homeScore = isFinished ? (isNaN(homeGoals) ? 0 : homeGoals) : null;
+  let awayScore = isFinished ? (isNaN(awayGoals) ? 0 : awayGoals) : null;
+
+  const stageName = match.campeonato?.nome_categoria
+    || inferCbrStage(match.rodada, compId)
+    || null;
+
+  // For Copa do Brasil knockouts, embed the penalty result in the stadium
+  // string when there was a shoot-out, so the UI can show it.
+  let stadium = match.local || null;
+  if (isFinished && !isNaN(homePens) && !isNaN(awayPens) && (homePens > 0 || awayPens > 0) && homeScore === awayScore) {
+    stadium = `${stadium || ""} (pênaltis ${homePens} x ${awayPens})`.trim();
+  }
+
   return {
     competitionId: compId,
     seasonId,
-    stageId: null,
+    stageId: match.rodada ? `RODADA_${match.rodada}` : null,
     groupId: null,
     groupName: null,
-    stageName: match.campeonato?.nome_categoria || null,
+    stageName,
     homeTeam: match.mandante?.nome || null,
     homeFlag: match.mandante?.url_escudo || null,
     awayTeam: match.visitante?.nome || null,
@@ -81,14 +129,14 @@ function buildMatchData(match, compId, seasonId) {
     awayCode: null,
     date: parseCbfDate(match.data, match.hora),
     round: match.rodada ? parseInt(match.rodada) || null : null,
-    stadium: match.local || null,
+    stadium,
     city: null,
     referee: null,
     attendance: null,
     status,
-    homeScore: isFinished ? parseInt(match.mandante?.gols) || 0 : null,
-    awayScore: isFinished ? parseInt(match.visitante?.gols) || 0 : null
+    homeScore,
+    awayScore
   };
 }
 
-module.exports = { getMatches, buildMatchData };
+module.exports = { getMatches, buildMatchData, inferCbrStage };

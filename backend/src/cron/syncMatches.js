@@ -7,6 +7,7 @@ const prisma = require("../database/prisma");
 const fifaApi = require("../services/fifaApi");
 const footballDataApi = require("../services/footballDataApi");
 const cbfApi = require("../services/cbfApi");
+const conmebolScraper = require("../services/conmebolScraper");
 const { competitions } = require("../config/competitions");
 
 function extractReferee(match) {
@@ -57,16 +58,40 @@ function mapFbStatus(status) {
   return 1;
 }
 
+/**
+ * Map football-data.org stage codes to friendly Portuguese labels used in
+ * the UI. The football-data "stage" field is a string identifier, not an
+ * object, so we normalise it here.
+ */
+const FB_STAGE_LABELS = {
+  GROUP_STAGE: "Fase de Grupos",
+  ROUND_1: "1ª Fase",
+  ROUND_2: "2ª Fase",
+  ROUND_3: "3ª Fase",
+  PLAY_OFFS: "Repescagem",
+  ROUND_OF_16: "Oitavas de Final",
+  QUARTER_FINALS: "Quartas de Final",
+  SEMI_FINALS: "Semifinal",
+  FINAL: "Final"
+};
+
+function normaliseFbStage(rawStage) {
+  if (!rawStage) return "Fase de Grupos";
+  return FB_STAGE_LABELS[rawStage] || rawStage;
+}
+
 function buildFootballDataMatchData(match, compId, seasonId) {
   const homeTeam = match.homeTeam || {};
   const awayTeam = match.awayTeam || {};
+  const stageRaw = typeof match.stage === "string" ? match.stage : match.stage?.name;
+  const group = match.group?.name || (stageRaw === "GROUP_STAGE" ? null : null);
   return {
     competitionId: compId,
     seasonId: seasonId,
-    stageId: match.stage?.id?.toString() || "",
-    groupId: match.group?.name || null,
-    groupName: match.group?.name || null,
-    stageName: match.stage?.name || null,
+    stageId: stageRaw || "",
+    groupId: group || null,
+    groupName: group || null,
+    stageName: normaliseFbStage(stageRaw),
     homeTeam: homeTeam.name || null,
     homeFlag: homeTeam.crest || null,
     awayTeam: awayTeam.name || null,
@@ -251,6 +276,69 @@ async function syncCbfCompetition(comp) {
   }
 }
 
+async function syncConmebolCompetition(comp) {
+  const { conmebolSlug, fixtureIdRange } = comp.config;
+  const seasonId = String(comp.config.footballDataSeason || comp.config.conmebolTournamentId || "2026");
+  console.log(`\n⚽ [${comp.name}] Buscando jogos via scraping CONMEBOL...`);
+
+  const start = fixtureIdRange?.start ?? 680;
+  const end = fixtureIdRange?.end ?? 1800;
+
+  const fixtures = await conmebolScraper.getAllFixtures(conmebolSlug, start, end);
+  console.log(`📅 ${fixtures.length} fixtures encontrados`);
+
+  let created = 0;
+  for (const f of fixtures) {
+    const matchId = `conmebol_${conmebolSlug}_${f.conmebolFixtureId}`;
+    if (!f.fixtureDate) continue; // skip fixtures without a date (future TBC)
+
+    // Skip manual overrides
+    const existing = await prisma.match.findUnique({ where: { id: matchId }, select: { manuallyAdjusted: true, status: true, homeScore: true, awayScore: true } });
+    if (existing?.manuallyAdjusted) {
+      console.log(`  ⏭ Pulando ${matchId} (ajuste manual)`);
+      continue;
+    }
+
+    // Infer status by date (CONMEBOL pages don't expose status explicitly)
+    const now = new Date();
+    const twoHours = 2 * 60 * 60 * 1000;
+    const isFinished = f.fixtureDate.getTime() + twoHours < now.getTime();
+    const status = isFinished ? 0 : 1;
+
+    const matchData = {
+      competitionId: comp.id,
+      seasonId,
+      stageId: f.stageName || null,
+      groupId: null,
+      groupName: null,
+      stageName: conmebolScraper.normaliseStage(f.stageName),
+      homeTeam: f.homeTeam,
+      homeFlag: null,
+      awayTeam: f.awayTeam,
+      awayFlag: null,
+      homeCode: null,
+      awayCode: null,
+      date: f.fixtureDate,
+      round: null,
+      stadium: f.venue || null,
+      city: null,
+      referee: null,
+      attendance: null,
+      status,
+      homeScore: isFinished ? null : null, // CONMEBOL pages don't expose scores
+      awayScore: isFinished ? null : null
+    };
+
+    await prisma.match.upsert({
+      where: { id: matchId },
+      update: matchData,
+      create: { id: matchId, ...matchData }
+    });
+    created++;
+  }
+  console.log(`  ✅ ${created} partidas sincronizadas`);
+}
+
 async function syncMatches() {
   for (const comp of competitions) {
     try {
@@ -260,6 +348,8 @@ async function syncMatches() {
         await syncFootballDataCompetition(comp);
       } else if (comp.apiProvider === "cbf") {
         await syncCbfCompetition(comp);
+      } else if (comp.apiProvider === "conmebol") {
+        await syncConmebolCompetition(comp);
       }
     } catch (error) {
       console.error(`❌ [${comp.name}] Erro na sincronização: ${error.message}`);

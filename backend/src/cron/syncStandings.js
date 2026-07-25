@@ -383,12 +383,99 @@ async function syncStandings() {
         await syncFifaStandings(comp);
       } else if (comp.apiProvider === "football-data" || comp.config.footballDataLeagueId) {
         await syncFootballDataStandings(comp);
+      } else if (comp.apiProvider === "conmebol") {
+        // Sulamericana: no free API; compute from locally-scraped matches.
+        const seasonId = String(comp.config.footballDataSeason || comp.config.conmebolTournamentId || "2026");
+        console.log(`📊 [${comp.name}] Sincronizando classificação a partir de jogos locais...`);
+        await syncConmebolStandings(comp, seasonId);
       }
     } catch (error) {
       console.error(`❌ [${comp.name}] Erro ao sincronizar classificação: ${error.message}`);
     }
   }
   console.log("✅ Sincronização de classificação concluída\n");
+}
+
+/**
+ * Compute group standings for a CONMEBOL competition (Sulamericana) from the
+ * locally-scraped matches. The scraper records `groupName`/`stageName`; we
+ * group by stageName === "Fase de Grupos" and compute stats per group.
+ *
+ * Note: the CONMEBOL fixture pages don't expose scores, so this only works
+ * once the matches are settled and homeScore/awayScore are populated via the
+ * partidas sync (or manually).
+ */
+async function syncConmebolStandings(comp, seasonId) {
+  const matches = await prisma.match.findMany({
+    where: {
+      competitionId: comp.id,
+      stageName: "Fase de Grupos",
+      OR: [{ status: 0 }, { status: 3 }]
+    }
+  });
+
+  // Compute all standings from local matches (group by groupName if present
+  // — fallback to a single "Classificação" group when missing).
+  const byGroup = {};
+  matches.forEach((m) => {
+    const gid = m.groupName || (m.stageName === "Fase de Grupos" ? "Classificação" : "Classificação");
+    if (!byGroup[gid]) byGroup[gid] = [];
+    byGroup[gid].push(m);
+  });
+
+  if (Object.keys(byGroups).length === 0) {
+    console.log(`  ⚠ Nenhum jogo da fase de grupos encontrado; pulando Sulamericana.`);
+    return;
+  }
+
+  const rows = [];
+  let nextId = 1;
+  for (const [groupName, groupMatches] of Object.entries(byGroups)) {
+    const stats = {};
+    for (const m of groupMatches) {
+      if (m.status !== 0) continue;
+      if (m.homeScore == null || m.awayScore == null) continue;
+      if (!stats[m.homeTeam]) stats[m.homeTeam] = { teamName: m.homeTeam, badge: m.homeFlag, tla: m.homeCode, played: 0, won: 0, draw: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 };
+      if (!stats[m.awayTeam]) stats[m.awayTeam] = { teamName: m.awayTeam, badge: m.awayFlag, tla: m.awayCode, played: 0, won: 0, draw: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 };
+      const h = stats[m.homeTeam], a = stats[m.awayTeam];
+      h.played++; a.played++;
+      h.goalsFor += m.homeScore; h.goalsAgainst += m.awayScore;
+      a.goalsFor += m.awayScore; a.goalsAgainst += m.homeScore;
+      if (m.homeScore > m.awayScore) { h.won++; h.points += 3; a.lost++; }
+      else if (m.homeScore < m.awayScore) { a.won++; a.points += 3; h.lost++; }
+      else { h.draw++; a.draw++; h.points++; a.points++; }
+    }
+    const sorted = Object.values(stats).sort((a, b) =>
+      b.points - a.points || (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst) || b.goalsFor - a.goalsFor
+    );
+    sorted.forEach((entry, i) => {
+      rows.push({
+        competitionId: comp.id,
+        seasonId,
+        groupId: groupName,
+        groupName,
+        teamId: `${comp.id}_${entry.teamName}_${nextId++}`,
+        teamName: entry.teamName,
+        teamCode: entry.tla || null,
+        badge: entry.badge || null,
+        position: i + 1,
+        played: entry.played,
+        wins: entry.won,
+        draws: entry.draw,
+        losses: entry.lost,
+        goalsFor: entry.goalsFor,
+        goalsAgainst: entry.goalsAgainst,
+        goalDifference: entry.goalsFor - entry.goalsAgainst,
+        points: entry.points
+      });
+    });
+  }
+
+  await prisma.$transaction([
+    prisma.standing.deleteMany({ where: { competitionId: comp.id, seasonId } }),
+    prisma.standing.createMany({ data: rows })
+  ]);
+  console.log(`  ${rows.length} registros criados a partir de ${matches.length} jogos locais`);
 }
 
 module.exports = syncStandings;
