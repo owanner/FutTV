@@ -9,7 +9,7 @@ import "dayjs/locale/pt-br";
 
 dayjs.locale("pt-br");
 
-function CompetitionCard({ c, finished = false }) {
+function CompetitionCard({ c, finished = false, lastFinishedDate }) {
   const navigate = useNav();
 
   return (
@@ -72,7 +72,11 @@ function CompetitionCard({ c, finished = false }) {
                 }}
               />
               <Typography variant="caption" color="text.secondary">
-                {finished ? "Concluída" : "Jogos · Classificação · Transmissões"}
+                {finished
+                  ? (lastFinishedDate
+                      ? `Último jogo: ${dayjs(lastFinishedDate).format("DD [de] MMMM [de] YYYY")}`
+                      : "Concluída")
+                  : "Jogos · Classificação · Transmissões"}
               </Typography>
             </Stack>
           </Stack>
@@ -147,14 +151,12 @@ export default function Competitions() {
             }}
           >
             {finishedSorted.map(({ c, st }) => (
-              <Box key={c.id}>
-                <CompetitionCard c={c} finished />
-                {st?.lastFinishedDate && (
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block", px: 0.5 }}>
-                    Último jogo: {dayjs(st.lastFinishedDate).format("DD [de] MMMM [de] YYYY")}
-                  </Typography>
-                )}
-              </Box>
+              <CompetitionCard
+                key={c.id}
+                c={c}
+                finished
+                lastFinishedDate={st?.lastFinishedDate}
+              />
             ))}
           </Box>
         </Box>

@@ -12,9 +12,10 @@ export default defineConfig({
         name: "Fut-TV",
         short_name: "FutTV",
         description: "Brasileirão, Libertadores e Copa do Mundo 2026",
-        theme_color: "#19AE47",
+        theme_color: "#111827",
         background_color: "#FFFFFF",
         display: "standalone",
+        orientation: "portrait",
         icons: [
           {
             src: "soccer-ball.png",

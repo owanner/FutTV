@@ -90,7 +90,7 @@ export const ADVANCE_ZONES = [
 
 /** Sulamericana-specific legend: Oitavas (green), Repescagem (yellow), Eliminado (red). */
 export const SUDAMERICANA_ZONES = [
-  { label: "Classificado (Oitavas)", color: "#43a047" },
+  { label: "Classificado", color: "#43a047" },
   { label: "Repescagem", color: "#fbc02d" },
   { label: "Eliminado", color: "#e53935" }
 ];
