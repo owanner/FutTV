@@ -25,6 +25,7 @@ export function getPositionColor(position, competitionId, team) {
         return "#43a047";   // green
       case "sulamericana":  // Libertadores 3rd -> Sul-Americana
       case "best-third":    // World Cup best third-placed
+      case "playoff":       // Sulamericana 2nd -> Repescagem
         return "#fbc02d";   // yellow
       case "eliminated":
         return "#e53935";   // red
@@ -43,9 +44,17 @@ export function getPositionColor(position, competitionId, team) {
   }
 
   if (competitionId === "sulamericana2026") {
-    // Group stage of Sulamericana: only 2 of 4 advance (groups of 4 -> top 2).
-    if (position <= 2) return "#43a047";  // Avances (green)
-    return "#e53935";                       // Eliminado (red)
+    // Sulamericana group stage: 1st → Oitavas (green/qualified),
+    // 2nd → Repescagem (yellow/playoff), 3rd & 4th → Eliminado (red).
+    // Prefer the explicit `qualifies` field (sourced from Opta's rankStatus),
+    // which is accurate at the end of the group stage; before that, fall back
+    // to a position-based guess.
+    if (team?.qualifies === "qualified") return "#43a047"; // green
+    if (team?.qualifies === "playoff") return "#fbc02d";    // yellow
+    if (team?.qualifies === "eliminated") return "#e53935"; // red
+    if (position === 1) return "#43a047";
+    if (position === 2) return "#fbc02d";
+    return "#e53935";
   }
 
   // Default fallback when `qualifies` is missing (World Cup / Libertadores):
@@ -79,6 +88,13 @@ export const ADVANCE_ZONES = [
   { label: "Eliminado", color: "#e53935" }
 ];
 
+/** Sulamericana-specific legend: Oitavas (green), Repescagem (yellow), Eliminado (red). */
+export const SUDAMERICANA_ZONES = [
+  { label: "Classificado (Oitavas)", color: "#43a047" },
+  { label: "Repescagem", color: "#fbc02d" },
+  { label: "Eliminado", color: "#e53935" }
+];
+
 /**
  * Knockout phase definitions used by the Knockouts tab.
  * Each phase has a key, label, and `ties` = number of *fixtures*
@@ -97,17 +113,23 @@ export const KNOCKOUT_PHASES = {
     { key: "FINAL", label: "Final", ties: 1, matchCount: 1 }
   ],
   libertadores2026: [
-    // football-data.org exposes no `stage` for Libertadores, and `round` is
-    // ambiguous (it overlaps group-stage matchdays with knockout rounds).
-    // We therefore classify by `status` (knockout matches are upcoming, i.e.
-    // status !== 0) and cluster the forthcoming fixtures by date into the
-    // expected phases below. Modern Libertadores has a single Final.
+    // Libertadores has NO "Repescagem" round — that belongs to Sulamericana.
+    // football-data.org labels the post-group round of 16 ties as `PLAY_OFFS`
+    // (normalised to "Repescagem" by the backend's old generic stage map),
+    // but for the Libertadores these 16 matches ARE the Oitavas de Final.
+    // We therefore map them to ROUND_OF_8 in `matchToPhase` below.
     { key: "ROUND_OF_8", label: "Oitavas de Final", ties: 8, matchCount: 16 },
     { key: "QUARTER_FINAL", label: "Quartas de Final", ties: 4, matchCount: 8 },
     { key: "SEMI_FINAL", label: "Semifinal", ties: 2, matchCount: 4 },
     { key: "FINAL", label: "Final", ties: 1, matchCount: 1 }
   ],
   sulamericana2026: [
+    // Sulamericana has a distinct Play-off (Repescagem) round before the
+    // Oitavas. Both rounds happen at the close of the group stage: 2nd-placed
+    // teams play each other (Repescagem), winners join the 1st-placed teams in
+    // the Oitavas. Subsequent rounds (Quartas, Semis, Final) are single-leg
+    // ties from the Oitavas onwards.
+    { key: "PLAY_OFF", label: "Repescagem", ties: 8, matchCount: 16 },
     { key: "ROUND_OF_8", label: "Oitavas de Final", ties: 8, matchCount: 16 },
     { key: "QUARTER_FINAL", label: "Quartas de Final", ties: 4, matchCount: 8 },
     { key: "SEMI_FINAL", label: "Semifinal", ties: 2, matchCount: 4 },
@@ -129,70 +151,28 @@ export const KNOCKOUT_PHASES = {
 const NORMALISE = (s) => String(s || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
 /**
- * Phase definitions used by the South-American date-clustering fallback
- * (Libertadores / Sulamericana), ordered earliest → latest. The cluster
- * sizes are the *expected* number of matches per phase; the algorithm
- * consumes forthcoming matches (sorted by date) and assigns them to phases
- * in order, splitting at the expected cumulative boundaries.
+ * Stage-name / stage-id substrings that identify a CONMEBOL post-group
+ * play-off round ("Repescagem"). Both Libertadores (football-data.org:
+ * `KNOCKOUT_ROUND_PLAY_OFF` / `PLAY_OFFS`) and Sulamericana (Opta:
+ * "Knockout Round Play-offs") expose this round, but it means different
+ * things in each competition — see `matchToPhase`.
  */
-const SOUTHERN_KNOCKOUT_PLAN = [
-  { key: "ROUND_OF_8", matchCount: 16 },      // Oitavas — 8 ties × 2 legs
-  { key: "QUARTER_FINAL", matchCount: 8 },   // Quartas — 4 ties × 2 legs
-  { key: "SEMI_FINAL", matchCount: 4 },      // Semifinal — 2 ties × 2 legs
-  { key: "FINAL", matchCount: 1 }            // Final — single match
+const PLAY_OFF_MARKERS = [
+  "REPESCAGEM",
+  "PLAY-OFF",
+  "PLAYOFF",
+  "PLAY_OFF",
+  "PLAY_OFFS",
+  "KNOCKOUT_ROUND_PLAY_OFF",
+  "KNOCKOUT ROUND PLAY"
 ];
-
-/**
- * Cluster a sorted list of forthcoming matches into phases by date.
- * Two consecutive matches belong to the same phase unless they are separated
- * by more than `gapDays` days OR the running cluster size reaches the
- * expected matchCount for the current phase.
- *
- * Returns a map { phaseKey: Match[] }.
- */
-function clusterSouthernByDate(upcomingMatches, gapDays = 10) {
-  const sorted = [...upcomingMatches]
-    .filter((m) => m.date)
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-  const out = {};
-  SOUTHERN_KNOCKOUT_PLAN.forEach((p) => { out[p.key] = []; });
-
-  let planIdx = 0;
-  for (let i = 0; i < sorted.length && planIdx < SOUTHERN_KNOCKOUT_PLAN.length; i++) {
-    const m = sorted[i];
-    const plan = SOUTHERN_KNOCKOUT_PLAN[planIdx];
-
-    let advance = false;
-    // Advance when current phase already has its expected complement of matches.
-    if (out[plan.key].length >= plan.matchCount && planIdx < SOUTHERN_KNOCKOUT_PLAN.length - 1) {
-      advance = true;
-    }
-    // Also advance when there is a large date gap from the previous match
-    // (cross-phase boundary). Only advance once per iteration to avoid skipping
-    // empty intermediate phases.
-    if (!advance && i > 0) {
-      const prev = sorted[i - 1];
-      const gapMs = new Date(m.date).getTime() - new Date(prev.date).getTime();
-      const gapD = gapMs / (24 * 60 * 60 * 1000);
-      if (gapD > gapDays && planIdx < SOUTHERN_KNOCKOUT_PLAN.length - 1) {
-        advance = true;
-      }
-    }
-    if (advance) planIdx++;
-
-    const target = SOUTHERN_KNOCKOUT_PLAN[Math.min(planIdx, SOUTHERN_KNOCKOUT_PLAN.length - 1)].key;
-    out[target].push(m);
-  }
-
-  return out;
-}
+const isPlayOff = (hay) => PLAY_OFF_MARKERS.some((m) => hay.includes(m));
 
 /**
  * Map a match to a knockout phase key for the competition identified by
- * `competitionId`. Tries the explicit stage name first (most reliable for
- * WC/CBF), then falls back to date-based clustering for South American
- * competitions where the stage is not exposed.
+ * `competitionId`. Uses the explicit `stageName` (populated from the scraper /
+ * API) — the previous date-clustering fallback has been removed since both
+ * Libertadores and Sulamericana now expose round names.
  */
 export function matchToPhase(match, competitionId) {
   const stageHay = NORMALISE([match.stageName, match.roundName, match.stageId].filter(Boolean).join(" "));
@@ -208,9 +188,28 @@ export function matchToPhase(match, competitionId) {
     // Anchored "FINAL" — must NOT match "BRONZE FINAL" — handled above by order.
     if (/(^|\s)FINAL(\s|$)/.test(stageHay)) return "FINAL";
   } else if (competitionId === "libertadores2026" || competitionId === "sulamericana2026") {
-    // South American competitions expose no `stage`; classification happens
-    // at the groupMatchesByPhase level via date clustering. Return null here
-    // so individual matches are not bucketed prematurely.
+    // South American competitions expose `stageName` (normalised pt label
+    // like "Oitavas de Final", "Repescagem", "Quartas de Final", etc.) on
+    // locally-scraped matches, so we classify by it. This is more accurate
+    // than the previous date-clustering fallback, which mixed Repescagem
+    // and Oitavas together (they happen on overlapping dates).
+    if (competitionId === "sulamericana2026") {
+      // Sulamericana-only play-off round ("Repescagem"), distinct from the
+      // Oitavas: 2nd-placed teams play each other, winners join 1st-placed
+      // teams in the Oitavas de Final.
+      if (isPlayOff(stageHay)) return "PLAY_OFF";
+    } else {
+      // Libertadores has NO Repescagem — football-data.org labels the
+      // post-group round-of-16 ties as `PLAY_OFFS` (backend-normalised to
+      // "Repescagem" via the shared stage map), but these 16 matches ARE
+      // the Oitavas de Final. Map them through to ROUND_OF_8 so they finally
+      // show up in the merit-based knockout bracket.
+      if (isPlayOff(stageHay)) return "ROUND_OF_8";
+    }
+    if (stageHay.includes("OITAVAS DE FINAL")) return "ROUND_OF_8";
+    if (stageHay.includes("QUARTAS DE FINAL")) return "QUARTER_FINAL";
+    if (stageHay.includes("SEMIFINAL")) return "SEMI_FINAL";
+    if (/(^|\s)FINAL(\s|$)/.test(stageHay)) return "FINAL";
     return null;
   } else {
     // Generic fallback (e.g. Copa do Brasil via CBF).
@@ -230,13 +229,18 @@ export function groupMatchesByPhase(matches, phases, competitionId) {
   const byPhase = {};
   phases.forEach((p) => { byPhase[p.key] = []; });
 
-  // South American fallback: only forthcoming matches (status !== 0) are
-  // relevant for the knockout stage; classify them by date clusters.
+  // South American competitions (Libertadores / Sulamericana): classification
+  // is now driven by `stageName` (populated from the scraper), which is more
+  // accurate than the previous date-clustering fallback. Upcoming matches
+  // (status !== 0 are not yet played) typically have stageName set to their
+  // knockout round. If a match has no recognised stage we leave it out so the
+  // bracket shows the generic "Confrontos a definir" placeholder rather than
+  // mismatching it into the wrong phase.
   if (competitionId === "libertadores2026" || competitionId === "sulamericana2026") {
-    const upcoming = (matches || []).filter((m) => m.status !== 0);
-    const clustered = clusterSouthernByDate(upcoming);
-    Object.keys(clustered).forEach((key) => {
-      if (byPhase[key]) byPhase[key] = clustered[key];
+    const pool = (matches || []).filter((m) => m.stageName && m.stageName !== "Fase de Grupos");
+    pool.forEach((m) => {
+      const key = matchToPhase(m, competitionId);
+      if (key && byPhase[key]) byPhase[key].push(m);
     });
     return byPhase;
   }

@@ -78,7 +78,8 @@ const competitions = [
     config: {
       conmebolSlug: "sudamericana",
       conmebolTournamentId: "16",
-      conmebolCompetitionId: "14",
+      conmebolCompetitionId: "102",
+      conmebolTournamentDrupalId: "104",
       fixtureIdRange: { start: 680, end: 1800 }
     },
     format: "groups-then-knockout",

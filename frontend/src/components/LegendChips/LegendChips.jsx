@@ -1,5 +1,5 @@
 import { Stack, Card, CardContent, Chip } from "@mui/material";
-import { CARD_SX, BRASILEIRAO_ZONES, ADVANCE_ZONES } from "../../utils/standingsUtils";
+import { CARD_SX, BRASILEIRAO_ZONES, SUDAMERICANA_ZONES } from "../../utils/standingsUtils";
 import { getCompetitionFormat } from "../../config/competitions";
 
 const WHITE_TEXT = new Set(["#193375", "#e53935", "#102a1f", "#0B1F4F"]);
@@ -29,7 +29,7 @@ export default function LegendChips({ competitionId }) {
       </>
     );
   } else if (competitionId === "sulamericana2026") {
-    content = ADVANCE_ZONES.map((zone) => (
+    content = SUDAMERICANA_ZONES.map((zone) => (
       <Chip
         key={zone.label}
         label={zone.label}

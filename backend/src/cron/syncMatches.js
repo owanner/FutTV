@@ -306,14 +306,20 @@ async function syncCbfCompetition(comp) {
 }
 
 async function syncConmebolCompetition(comp) {
-  const { conmebolSlug, fixtureIdRange } = comp.config;
+  const { conmebolSlug, fixtureIdRange, conmebolCompetitionId } = comp.config;
   const seasonId = String(comp.config.footballDataSeason || comp.config.conmebolTournamentId || "2026");
   console.log(`\n⚽ [${comp.name}] Buscando jogos via scraping CONMEBOL...`);
 
   const start = fixtureIdRange?.start ?? 680;
   const end = fixtureIdRange?.end ?? 1800;
 
-  const fixtures = await conmebolScraper.getAllFixtures(conmebolSlug, start, end);
+  // Filter by CONMEBOL `competition_id` so fixtures from other tournaments
+  // (e.g. CONMEBOL U17 Femenino, or Libertadores games exposed on the
+  // Sudamericana domain) don't leak into this competition. The id is stable
+  // per season — for 2026: Libertadores=13, Sudamericana=102.
+  const scraperOpts = conmebolCompetitionId ? { expectedCompetitionId: String(conmebolCompetitionId) } : {};
+
+  const fixtures = await conmebolScraper.getAllFixtures(conmebolSlug, start, end, scraperOpts);
   console.log(`📅 ${fixtures.length} fixtures encontrados`);
 
   let created = 0;
@@ -342,9 +348,9 @@ async function syncConmebolCompetition(comp) {
       groupName: null,
       stageName: conmebolScraper.normaliseStage(f.stageName),
       homeTeam: f.homeTeam,
-      homeFlag: null,
+      homeFlag: f.homeCrest || null,
       awayTeam: f.awayTeam,
-      awayFlag: null,
+      awayFlag: f.awayCrest || null,
       homeCode: null,
       awayCode: null,
       date: f.fixtureDate,
@@ -366,6 +372,25 @@ async function syncConmebolCompetition(comp) {
     created++;
   }
   console.log(`  ✅ ${created} partidas sincronizadas`);
+
+  // Cleanup: remove matches that belong to this competition but are no longer
+  // returned by the scraper (e.g. U17 / Libertadores fixtures that used to leak
+  // into Sudamericana before we added the competition_id filter). We keep any
+  // match that still appears in this sync run + any manually-adjusted row.
+  const validIds = new Set(fixtures.map(f => `conmebol_${conmebolSlug}_${f.conmebolFixtureId}`));
+  const staleRows = await prisma.match.findMany({
+    where: { competitionId: comp.id },
+    select: { id: true, manuallyAdjusted: true, homeTeam: true, awayTeam: true }
+  });
+  const staleIds = staleRows
+    .filter(r => !validIds.has(r.id) && !r.manuallyAdjusted)
+    .map(r => r.id);
+
+  if (staleIds.length > 0) {
+    // Broadcasts cascade-delete automatically (see schema).
+    await prisma.match.deleteMany({ where: { id: { in: staleIds } } });
+    console.log(`  🧹 ${staleIds.length} partidas obsoletas removidas (U17/Libertadores filtrados)`);
+  }
 }
 
 /**

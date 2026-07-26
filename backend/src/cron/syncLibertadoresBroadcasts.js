@@ -67,7 +67,19 @@ async function syncCompetitionBroadcasts(comp) {
   try {
     console.log(`\n📺 [${comp.shortName}] Sincronizando transmissões...`);
 
-    const scraped = await conmebolScraper.getAllBroadcasts(slug);
+    // For Sudamericana we must filter fixtures by CONMEBOL `competition_id`
+    // to avoid leaking U17 / Libertadores games that live on the same domain.
+    const { fixtureIdRange, conmebolCompetitionId } = comp.config;
+    const scraperOpts = {};
+    if (fixtureIdRange) {
+      scraperOpts.startId = fixtureIdRange.start;
+      scraperOpts.endId = fixtureIdRange.end;
+    }
+    if (conmebolCompetitionId) {
+      scraperOpts.expectedCompetitionId = String(conmebolCompetitionId);
+    }
+
+    const scraped = await conmebolScraper.getAllBroadcasts(slug, scraperOpts);
     console.log(`[${comp.shortName}] ${scraped.length} partidas com transmissões raspadas`);
 
     const dbMatches = await prisma.match.findMany({

@@ -6,6 +6,7 @@
 const prisma = require("../database/prisma");
 const fifaApi = require("../services/fifaApi");
 const footballDataApi = require("../services/footballDataApi");
+const conmebolScraper = require("../services/conmebolScraper");
 const { competitions } = require("../config/competitions");
 const { STATUS } = require("../utils/matchStatus");
 
@@ -397,15 +398,120 @@ async function syncStandings() {
 }
 
 /**
- * Compute group standings for a CONMEBOL competition (Sulamericana) from the
- * locally-scraped matches. The scraper records `groupName`/`stageName`; we
- * group by stageName === "Fase de Grupos" and compute stats per group.
+ * Sync standings for a CONMEBOL competition (Sulamericana).
  *
- * Note: the CONMEBOL fixture pages don't expose scores, so this only works
- * once the matches are settled and homeScore/awayScore are populated via the
- * partidas sync (or manually).
+ * The CONMEBOL site renders the group standings client-side from Opta's
+ * performfeeds.com API; we proxy the same endpoint via the scraper
+ * (`conmebolScraper.scrapeStandings`) so we get the OFFICIAL standings
+ * (including the qualified/repescagem/eliminated status, which the local
+ * matches alone can't tell us).
+ *
+ * The Opta payload doesn't include team crests, so we cross-reference each
+ * team in a group with the locally-scraped match rows (which store the home/
+ * away crest URLs) to fill the `badge` field when possible.
+ *
+ * Falls back to computing from local matches if the Opta scrape fails.
  */
 async function syncConmebolStandings(comp, seasonId) {
+  const { conmebolSlug, conmebolTournamentDrupalId, conmebolCompetitionId } = comp.config;
+
+  // First, fetch the official standings from Opta via the scraper.
+  const scraperOpts = conmebolCompetitionId ? { expectedCompetitionId: String(conmebolCompetitionId) } : {};
+  let optaRows = null;
+  if (conmebolTournamentDrupalId) {
+    try {
+      console.log(`📊 [${comp.name}] Sincronizando classificação via Opta/CONMEBOL...`);
+      optaRows = await conmebolScraper.scrapeStandings(conmebolSlug, conmebolTournamentDrupalId, scraperOpts);
+    } catch (err) {
+      console.warn(`  ⚠ Opta standings scrape falhou: ${err.message}`);
+    }
+  }
+
+  if (optaRows && optaRows.length > 0) {
+    // Build a tidy -> crest map from the locally-scraped match teams so we can
+    // decorate Opta rows with their club badge (the Opta payload doesn't ship
+    // crests). We match by `teamCode` (most reliable, both come from CONMEBOL).
+    const codeToCrest = {};
+    const nameToCrest = {};
+    const localMatches = await prisma.match.findMany({
+      where: { competitionId: comp.id },
+      select: { homeTeam: true, awayTeam: true, homeCode: true, awayCode: true, homeFlag: true, awayFlag: true }
+    });
+    for (const m of localMatches) {
+      if (m.homeFlag) {
+        if (m.homeCode) codeToCrest[m.homeCode] = m.homeFlag;
+        nameToCrest[String(m.homeTeam || "").trim().toLowerCase()] = m.homeFlag;
+      }
+      if (m.awayFlag) {
+        if (m.awayCode) codeToCrest[m.awayCode] = m.awayFlag;
+        nameToCrest[String(m.awayTeam || "").trim().toLowerCase()] = m.awayFlag;
+      }
+    }
+
+    function resolveCrest(row) {
+      if (row.teamCode && codeToCrest[row.teamCode]) return codeToCrest[row.teamCode];
+      const key = String(row.teamName || "").trim().toLowerCase();
+      if (nameToCrest[key]) return nameToCrest[key];
+      // The Opta name sometimes is the official name (e.g. "CA Mineiro") while
+      // the fixture pages use the short name (e.g. "Atlético Mineiro"); try a
+      // last-word match as a last resort.
+      const lastWord = key.split(/\s+/).pop();
+      if (lastWord) {
+        for (const [n, c] of Object.entries(nameToCrest)) {
+          if (n.endsWith(lastWord) || n.includes(lastWord)) return c;
+        }
+      }
+      return null;
+    }
+
+    const rows = optaRows.map((r) => ({
+      competitionId: comp.id,
+      seasonId,
+      groupId: r.groupId,
+      groupName: r.groupName,
+      teamId: r.teamId,
+      teamName: r.teamName,
+      teamCode: r.teamCode || null,
+      badge: resolveCrest(r) || r.badge || null,
+      position: r.position || 0,
+      played: r.played,
+      wins: r.wins,
+      draws: r.draws,
+      losses: r.losses,
+      goalsFor: r.goalsFor,
+      goalsAgainst: r.goalsAgainst,
+      goalDifference: r.goalDifference,
+      points: r.points,
+      qualifies: r.qualifies || null
+    }));
+
+    const filteredRows = rows.filter((r) => r.teamName && r.teamId);
+    if (filteredRows.length > 0) {
+      await prisma.$transaction([
+        prisma.standing.deleteMany({ where: { competitionId: comp.id, seasonId } }),
+        prisma.standing.createMany({ data: filteredRows })
+      ]);
+      console.log(`  ✅ ${filteredRows.length} registros criados via Opta (com status de qualificação)`);
+      await applyManualAdjustments(comp.id, seasonId).catch((err) => {
+        console.error(`  ⚠ Erro ao aplicar ajustes manuais: ${err.message}`);
+      });
+      return;
+    }
+  }
+
+  // Fallback: compute from locally-scraped matches (matches the previous
+  // implementation, but with the bug fixed).
+  console.log(`  ⚠ Opta indisponível — calculando classificação a partir de jogos locais...`);
+  await syncConmebolStandingsFromLocalMatches(comp, seasonId);
+}
+
+/**
+ * Fallback path: compute Sulamericana group standings from locally-scraped
+ * matches. Used only when the Opta standings scrape fails. Note that this
+ * cannot derive qualification status (qualified / playoff / eliminated)
+ * because group ordering alone doesn't capture cross-group comparisons.
+ */
+async function syncConmebolStandingsFromLocalMatches(comp, seasonId) {
   const matches = await prisma.match.findMany({
     where: {
       competitionId: comp.id,
@@ -414,11 +520,9 @@ async function syncConmebolStandings(comp, seasonId) {
     }
   });
 
-  // Compute all standings from local matches (group by groupName if present
-  // — fallback to a single "Classificação" group when missing).
   const byGroup = {};
   matches.forEach((m) => {
-    const gid = m.groupName || (m.stageName === "Fase de Grupos" ? "Classificação" : "Classificação");
+    const gid = m.groupName || "Classificação";
     if (!byGroup[gid]) byGroup[gid] = [];
     byGroup[gid].push(m);
   });
@@ -430,7 +534,7 @@ async function syncConmebolStandings(comp, seasonId) {
 
   const rows = [];
   let nextId = 1;
-  for (const [groupName, groupMatches] of Object.entries(byGroups)) {
+  for (const [groupName, groupMatches] of Object.entries(byGroup)) {
     const stats = {};
     for (const m of groupMatches) {
       if (m.status !== 0) continue;
@@ -475,7 +579,7 @@ async function syncConmebolStandings(comp, seasonId) {
     prisma.standing.deleteMany({ where: { competitionId: comp.id, seasonId } }),
     prisma.standing.createMany({ data: rows })
   ]);
-  console.log(`  ${rows.length} registros criados a partir de ${matches.length} jogos locais`);
+  console.log(`  ${rows.length} registros calculados do banco local (sem status de qualificação)`);
 }
 
 module.exports = syncStandings;
