@@ -11,6 +11,7 @@ const cron = require("node-cron");
 const prisma = require("./database/prisma");
 
 const syncMatches = require("./cron/syncMatches");
+const { startMatchScheduler } = require("./cron/matchScheduler");
 const syncStandings = require("./cron/syncStandings");
 const syncLibertadoresBroadcasts = require("./cron/syncLibertadoresBroadcasts");
 const syncBrasileiraoBroadcasts = require("./cron/syncBrasileiraoBroadcasts");
@@ -58,13 +59,17 @@ const guardedSyncLibertadoresBroadcasts = withGuard(syncLibertadoresBroadcasts);
 const guardedSyncBrasileiraoBroadcasts = withGuard(syncBrasileiraoBroadcasts);
 const guardedSyncCopaDoBrasilBroadcasts = withGuard(syncCopaDoBrasilBroadcasts);
 
+// Full sync once at boot so the DB is warm; afterwards the scheduler takes over.
 guardedSyncMatches();
 guardedSyncStandings();
 guardedSyncLibertadoresBroadcasts();
 guardedSyncBrasileiraoBroadcasts();
 guardedSyncCopaDoBrasilBroadcasts();
 
-cron.schedule("*/5 * * * *", guardedSyncMatches);
+// DB-driven match scheduler — replaces the old `*/5` cron for matches.
+// Per-competition: 1 min while LIVE, 10 min <2h, hourly <24h, 2x/day <=5d, daily otherwise.
+startMatchScheduler();
+
 cron.schedule("4-59/15 * * * *", guardedSyncStandings);
 cron.schedule("9-59/30 * * * *", guardedSyncLibertadoresBroadcasts);
 cron.schedule("19-49/30 * * * *", guardedSyncBrasileiraoBroadcasts);

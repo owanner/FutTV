@@ -9,6 +9,7 @@ const footballDataApi = require("../services/footballDataApi");
 const cbfApi = require("../services/cbfApi");
 const conmebolScraper = require("../services/conmebolScraper");
 const { competitions } = require("../config/competitions");
+const { isSameTeam } = require("../utils/textUtils");
 
 function extractReferee(match) {
   if (!match.Officials || match.Officials.length === 0) return null;
@@ -53,7 +54,7 @@ function buildFifaMatchData(match, compId) {
 
 function mapFbStatus(status) {
   if (status === "FINISHED" || status === "AWARDED") return 0;
-  if (status === "IN_PLAY" || status === "PAUSED" || status === "HALFTIME") return 3;
+  if (status === "LIVE" || status === "IN_PLAY" || status === "PAUSED" || status === "HALFTIME") return 3;
   if (status === "CANCELLED" || status === "POSTPONED" || status === "SUSPENDED") return 4;
   return 1;
 }
@@ -179,6 +180,101 @@ async function syncFootballDataCompetition(comp) {
   }
 }
 
+/**
+ * Enrich CBF matches with live scores + status from football-data.org.
+ * CBF itself returns 0 for all goals, so football-data is the source of truth
+ * for scores and live/final status.
+ *
+ * Accepts an optional `cbfMatches` payload (from CBF API); if not provided,
+ * it falls back to using matches already in the DB (useful for the
+ * lightweight "score-only" sync path that avoids re-fetching CBF).
+ *
+ * In score-only mode (no `cbfMatches`), we ask football-data only for LIVE
+ * matches (smaller payload) and dislike the full season query.
+ */
+async function enrichCbfScoresFromFootballData(comp, cbfMatches) {
+  const { footballDataLeagueId, footballDataSeason } = comp.config;
+  if (!footballDataLeagueId || !process.env.FOOTBALL_DATA_API_KEY) return;
+
+  const scoreOnly = !cbfMatches;
+  try {
+    // Note: we deliberately do NOT pass `status=LIVE` to football-data here.
+    // Its `?status=LIVE` filter has been observed to return 0 even when the
+    // unfiltered call returns matches marked `status: "LIVE"` — likely a
+    // cache/indexing lag on their side. Fetching the full season is cheap
+    // enough (~1s) and guarantees we always see live + just-finished games.
+    const fbMatches = await footballDataApi.getMatches(
+      footballDataLeagueId,
+      footballDataSeason
+    );
+
+    let cbfRows;
+    if (cbfMatches && cbfMatches.length) {
+      cbfRows = cbfMatches.map((m) => ({
+        id: `cbf_${m.id_jogo}`,
+        home: m.mandante?.nome || "",
+        away: m.visitante?.nome || ""
+      }));
+    } else {
+      // Score-only fallback: only consider live + recent (last 4h) matches
+      // in the DB, since football-data was asked only for LIVE matches.
+      const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+      const dbMatches = await prisma.match.findMany({
+        where: {
+          competitionId: comp.id,
+          OR: [{ status: 3 }, { status: 1, date: { gte: fourHoursAgo } }]
+        },
+        select: { id: true, homeTeam: true, awayTeam: true }
+      });
+      cbfRows = dbMatches.map((m) => ({
+        id: m.id,
+        home: m.homeTeam || "",
+        away: m.awayTeam || ""
+      }));
+    }
+
+    let scoresUpdated = 0;
+    let statusUpdated = 0;
+
+    for (const fb of fbMatches) {
+      const liveOrFinished = ["LIVE", "IN_PLAY", "PAUSED", "HALFTIME", "FINISHED", "AWARDED"].includes(fb.status);
+      if (!liveOrFinished) continue;
+
+      const fbHome = fb.homeTeam?.name || "";
+      const fbAway = fb.awayTeam?.name || "";
+      const row = cbfRows.find(
+        (r) => isSameTeam(r.home, fbHome) && isSameTeam(r.away, fbAway)
+      );
+      if (!row) continue;
+
+      const homeGoals = fb.score?.fullTime?.home;
+      const awayGoals = fb.score?.fullTime?.away;
+
+      if (homeGoals != null && awayGoals != null) {
+        await prisma.match.updateMany({
+          where: { id: row.id, manuallyAdjusted: false },
+          data: { homeScore: homeGoals, awayScore: awayGoals }
+        });
+        scoresUpdated++;
+      }
+
+      const fbStatus = mapFbStatus(fb.status);
+      if (fbStatus !== 1) {
+        await prisma.match.updateMany({
+          where: { id: row.id, manuallyAdjusted: false },
+          data: { status: fbStatus }
+        });
+        statusUpdated++;
+      }
+    }
+
+    if (scoresUpdated > 0) console.log(`  📊 ${scoresUpdated} placares atualizados via football-data.org`);
+    if (statusUpdated > 0) console.log(`  📊 ${statusUpdated} status atualizados via football-data.org`);
+  } catch (err) {
+    console.error(`  ⚠ Não foi possível atualizar placares via football-data.org: ${err.message}`);
+  }
+}
+
 async function syncCbfCompetition(comp) {
   const { cbfCompetitionId, footballDataLeagueId, footballDataSeason } = comp.config;
   const seasonId = String(footballDataSeason);
@@ -206,74 +302,7 @@ async function syncCbfCompetition(comp) {
   }
 
   // Update scores and status from football-data.org (CBF returns 0 for all goals)
-  if (footballDataLeagueId && process.env.FOOTBALL_DATA_API_KEY) {
-    try {
-      const fbMatches = await footballDataApi.getMatches(footballDataLeagueId, footballDataSeason);
-      let updated = 0;
-
-      for (const fb of fbMatches) {
-        if (fb.status !== "FINISHED") continue;
-        const homeGoals = fb.score?.fullTime?.home;
-        const awayGoals = fb.score?.fullTime?.away;
-        if (homeGoals == null || awayGoals == null) continue;
-
-        const fbHome = fb.homeTeam?.name || "";
-        const fbAway = fb.awayTeam?.name || "";
-
-        // Find matching CBF match by team name overlap
-        const cbfMatch = matches.find((m) => {
-          const home = (m.mandante?.nome || "").toLowerCase();
-          const away = (m.visitante?.nome || "").toLowerCase();
-          return (
-            (fbHome.toLowerCase().includes(home.slice(0, 5)) || home.includes(fbHome.toLowerCase().slice(0, 5))) &&
-            (fbAway.toLowerCase().includes(away.slice(0, 5)) || away.includes(fbAway.toLowerCase().slice(0, 5)))
-          );
-        });
-
-        if (cbfMatch) {
-          const cbfId = `cbf_${cbfMatch.id_jogo}`;
-          await prisma.match.updateMany({
-            where: { id: cbfId, status: 0, OR: [{ homeScore: 0 }, { homeScore: null }] },
-            data: { homeScore: homeGoals, awayScore: awayGoals }
-          });
-          updated++;
-        }
-      }
-
-      // Update live/finished/scheduled status from football-data.org
-      let statusUpdated = 0;
-      for (const fb of fbMatches) {
-        const fbStatus = mapFbStatus(fb.status);
-        if (fbStatus === 1) continue;
-
-        const fbHome = fb.homeTeam?.name || "";
-        const fbAway = fb.awayTeam?.name || "";
-
-        const cbfMatch = matches.find((m) => {
-          const home = (m.mandante?.nome || "").toLowerCase();
-          const away = (m.visitante?.nome || "").toLowerCase();
-          return (
-            (fbHome.toLowerCase().includes(home.slice(0, 5)) || home.includes(fbHome.toLowerCase().slice(0, 5))) &&
-            (fbAway.toLowerCase().includes(away.slice(0, 5)) || away.includes(fbAway.toLowerCase().slice(0, 5)))
-          );
-        });
-
-        if (cbfMatch) {
-          const cbfId = `cbf_${cbfMatch.id_jogo}`;
-          await prisma.match.updateMany({
-            where: { id: cbfId, manuallyAdjusted: false },
-            data: { status: fbStatus }
-          });
-          statusUpdated++;
-        }
-      }
-
-      if (updated > 0) console.log(`  📊 ${updated} placares atualizados via football-data.org`);
-      if (statusUpdated > 0) console.log(`  📊 ${statusUpdated} status atualizados via football-data.org`);
-    } catch (err) {
-      console.error(`  ⚠ Não foi possível atualizar placares via football-data.org: ${err.message}`);
-    }
-  }
+  await enrichCbfScoresFromFootballData(comp, matches);
 }
 
 async function syncConmebolCompetition(comp) {
@@ -339,23 +368,60 @@ async function syncConmebolCompetition(comp) {
   console.log(`  ✅ ${created} partidas sincronizadas`);
 }
 
+/**
+ * Run a full sync for a single competition by its id.
+ * Useful for the DB-driven scheduler to refresh one competition on demand.
+ */
+async function syncCompetition(compId) {
+  const comp = competitions.find((c) => c.id === compId);
+  if (!comp) return;
+  try {
+    if (comp.apiProvider === "fifa") await syncFifaCompetition(comp);
+    else if (comp.apiProvider === "football-data") await syncFootballDataCompetition(comp);
+    else if (comp.apiProvider === "cbf") await syncCbfCompetition(comp);
+    else if (comp.apiProvider === "conmebol") await syncConmebolCompetition(comp);
+  } catch (error) {
+    console.error(`❌ [${comp.name}] Erro na sincronização: ${error.message}`);
+  }
+}
+
+/**
+ * Lightweight "score-only" sync that updates live scores and status for a
+ * competition without re-fetching the heavy CBF/conmebol payload.
+ *
+ * - CBF competitions: pulls scores+status from football-data.org and matches
+ *   against existing DB rows (no CBF API call required).
+ * - football-data competitions: full refresh (already light — single endpoint).
+ * - fifa/conmebol: skipped (no cheap score-only path); use syncCompetition.
+ *
+ * Used by the scheduler for the "1-minute live cadence" path.
+ */
+async function refreshLiveScores(compId) {
+  const comp = competitions.find((c) => c.id === compId);
+  if (!comp) return;
+
+  try {
+    if (comp.apiProvider === "cbf") {
+      await enrichCbfScoresFromFootballData(comp);
+    } else if (comp.apiProvider === "football-data") {
+      // Libertadores — football-data is the source itself, so a normal sync here
+      // both updates scores and status in one cheap call.
+      await syncFootballDataCompetition(comp);
+    }
+    // fifa / conmebol: no lightweight path -> no-op (handled by heavier sync)
+  } catch (error) {
+    console.error(`❌ [${comp.name}] Erro no refresh de placares: ${error.message}`);
+  }
+}
+
 async function syncMatches() {
   for (const comp of competitions) {
-    try {
-      if (comp.apiProvider === "fifa") {
-        await syncFifaCompetition(comp);
-      } else if (comp.apiProvider === "football-data") {
-        await syncFootballDataCompetition(comp);
-      } else if (comp.apiProvider === "cbf") {
-        await syncCbfCompetition(comp);
-      } else if (comp.apiProvider === "conmebol") {
-        await syncConmebolCompetition(comp);
-      }
-    } catch (error) {
-      console.error(`❌ [${comp.name}] Erro na sincronização: ${error.message}`);
-    }
+    await syncCompetition(comp.id);
   }
   console.log("\n✅ Sincronização de jogos concluída\n");
 }
 
 module.exports = syncMatches;
+module.exports.syncCompetition = syncCompetition;
+module.exports.refreshLiveScores = refreshLiveScores;
+module.exports.enrichCbfScoresFromFootballData = enrichCbfScoresFromFootballData;

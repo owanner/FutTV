@@ -10,18 +10,38 @@ const CBF_API_BASE = "https://www.cbf.com.br/api/cbf/jogos/campeonato";
 const REQUEST_TIMEOUT_MS = 30000;
 
 /**
+ * Lightweight retry for CBF calls.
+ * CBF's API is notoriously flaky (ECONNRESET, TLS handshake drops).
+ * Retries network errors with 800ms/1600ms backoff.
+ */
+async function getMatchesWithRetry(url, attempt = 1, maxAttempts = 3) {
+  try {
+    const { data } = await axios.get(url, {
+      timeout: REQUEST_TIMEOUT_MS,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+      },
+      httpsAgent: new (require("https").Agent)({ rejectUnauthorized: false })
+    });
+    return data.jogos || [];
+  } catch (err) {
+    if (attempt >= maxAttempts) throw err;
+    const status = err?.response?.status;
+    // Retry on network errors and 5xx; do not retry on 4xx (e.g. real 404s).
+    const isRetryable = !err.response || (status >= 500 && status < 600);
+    if (!isRetryable) throw err;
+    const delay = 800 * Math.pow(2, attempt - 1);
+    await new Promise((r) => setTimeout(r, delay));
+    return getMatchesWithRetry(url, attempt + 1, maxAttempts);
+  }
+}
+
+/**
  * Fetch all matches for a CBF competition.
  */
 async function getMatches(competitionId) {
   const url = `${CBF_API_BASE}/${competitionId}`;
-  const { data } = await axios.get(url, {
-    timeout: REQUEST_TIMEOUT_MS,
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-    },
-    httpsAgent: new (require("https").Agent)({ rejectUnauthorized: false })
-  });
-  return data.jogos || [];
+  return getMatchesWithRetry(url);
 }
 
 /**
