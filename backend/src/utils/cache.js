@@ -32,7 +32,7 @@ class MemoryCache {
 
   key(req) {
     const query = new URL(req.url, "http://localhost").searchParams.toString();
-    const path = req.route ? req.baseUrl + req.route.path : req.originalUrl;
+    const path = req.originalUrl.split("?")[0];
     return query ? `${path}?${query}` : path;
   }
 
