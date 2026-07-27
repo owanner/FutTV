@@ -18,7 +18,7 @@ const competitions = [
       primary: "#19AE47",
       secondary: "#FFDC02",
       accent: "#193375",
-      gradient: "linear-gradient(90deg, #19AE47 50%, #19AE47 50%, #193375 100%)",
+      gradient: "linear-gradient(90deg, #FFDC02 0%, #19AE47 50%, #193375 100%)",
       background: "#F6FDF9",
       paper: "#FFFFFF"
     }
@@ -125,10 +125,6 @@ export function hasGroupStage(id) {
 export function hasKnockoutStage(id) {
   const f = getCompetitionFormat(id);
   return f === "knockout" || f === "groups-then-knockout";
-}
-
-export function isLibertadores(id) {
-  return id === "libertadores2026";
 }
 
 export default competitions;

@@ -38,11 +38,11 @@ const competitions = [
     },
     format: "knockout",
     colors: {
-      primary: "#1565C0",
-      secondary: "#FFD600",
-      accent: "#FFFFFF",
-      gradient: "linear-gradient(90deg, #1565C0 0%, #FFD600 100%)",
-      background: "#F5F8FE",
+      primary: "#193375",
+      secondary: "#FFDC02",
+      accent: "#19AE47",
+      gradient: "linear-gradient(90deg, #193375 0%, #FFDC02 50%, #19AE47 100%)",
+      background: "#F4F7FC",
       paper: "#FFFFFF"
     }
   },

@@ -33,7 +33,6 @@ function TeamBlock({ flag, name, code, size = "md", dark = false, onClick }) {
   const handleTeamClick = (e) => {
     e?.stopPropagation?.();
     if (onClick) return onClick(e);
-    // if (code) navigate(`/team/${code}`); — rota /team desativada
   };
 
   return (

@@ -1,6 +1,5 @@
 import { Box, Card, CardActionArea, CardContent, Stack, Typography, Skeleton, Chip } from "@mui/material";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-//import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { getAllCompetitions } from "../../config/competitions";
 import useNav from "../../hooks/useNav";
 import { useCompetitionsStatus } from "../../hooks/useCompetitionsStatus";
@@ -138,7 +137,6 @@ export default function Competitions() {
       {finishedSorted.length > 0 && (
         <Box>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-            {/* <CheckCircleIcon color="success" fontSize="small" /> */}
             <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 700, letterSpacing: 0.8 }}>
               Competições encerradas
             </Typography>

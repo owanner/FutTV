@@ -20,7 +20,6 @@ export default function GroupStandings({ groupName, teams, competitionId: propCo
           fontWeight={700}
           gutterBottom
           sx={{ px: 2, pt: 2, mb: 0 }}
-          /* onClick={() => navigate(`/group/${groupLetter}`)} — rota /group desativada */
         >
           {groupName}
         </Typography>
@@ -79,15 +78,14 @@ export default function GroupStandings({ groupName, teams, competitionId: propCo
                 sx={{ width: { xs: 18, md: 24 }, height: { xs: 18, md: 24 }, flexShrink: 0 }}
               />
               <Typography
-                variant="body2"
-                sx={{
-                  fontSize: { xs: "0.80rem", md: "0.875rem" },
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis"
-                }}
-                /* onClick={() => navigate(`/team/${team.teamCode}`)} — rota /team desativada */
-              >
+                  variant="body2"
+                  sx={{
+                    fontSize: { xs: "0.80rem", md: "0.875rem" },
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis"
+                  }}
+                >
                 {isMobile ? abbreviateTeamName(team.teamName) : normalizeTeamName(team.teamName)}
               </Typography>
             </Stack>

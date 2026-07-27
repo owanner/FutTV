@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Stack, Chip, Box, Typography } from "@mui/material";
+import { useSearchParams } from "react-router-dom";
 import { useStandings } from "../../hooks/useStandings";
 import { useCompetition } from "../../contexts/CompetitionContext";
 import {
@@ -21,7 +22,7 @@ export default function Standings() {
   const { data, isLoading, error } = useStandings();
   const { competition, competitionId } = useCompetition();
   const format = getCompetitionFormat(competitionId);
-  const showGroupsToggle = format === "groups-then-knockout" || competitionId === "libertadores2026";
+  const showGroupsToggle = format === "groups-then-knockout";
   const showStandingsTab = hasGroupStage(competitionId);
   const showKnockoutTab = hasKnockoutStage(competitionId);
   const defaultTab = format === "knockout" ? "knockout" : "groups";
@@ -30,6 +31,7 @@ export default function Standings() {
   const comp = getCompetition(competitionId);
   const teamLabel = comp?.teamLabel || "Time";
   const allCompetitions = getAllCompetitions();
+  const [, setSearchParams] = useSearchParams();
 
   if (isLoading) return <PageLoader />;
   if (error) return <PageError message="Erro ao carregar classificação" />;
@@ -48,9 +50,11 @@ export default function Standings() {
                 key={c.id}
                 label={c.shortName || c.name}
                 onClick={() => {
-                  const url = new URL(window.location);
-                  url.searchParams.set("competition", c.id);
-                  window.location.search = url.search;
+                  setSearchParams((prev) => {
+                    const next = new URLSearchParams(prev);
+                    next.set("competition", c.id);
+                    return next;
+                  });
                 }}
                 variant={c.id === competitionId ? "filled" : "outlined"}
                 sx={{

@@ -23,8 +23,8 @@ export default function createCompetitionTheme(competition) {
             light: `${colors.accent}18`
           },
           background: {
-            default: "#F6FAF8",
-            paper: "#FFFFFF"
+            default: colors.background || "#F6FAF8",
+            paper: colors.paper || "#FFFFFF"
           },
           text: {
             primary: "#10201D",

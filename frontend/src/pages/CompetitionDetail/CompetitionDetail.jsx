@@ -184,7 +184,7 @@ function StandingsTab({ competitionId }) {
   const format = getCompetitionFormat(competitionId);
   const comp = getCompetition(competitionId);
   const teamLabel = comp?.teamLabel || "Time";
-  const showGroupsToggle = format === "groups-then-knockout" || competitionId === "libertadores2026";
+  const showGroupsToggle = format === "groups-then-knockout";
   const [view, setView] = useState("groups");
 
   if (isLoading) return <PageLoader />;

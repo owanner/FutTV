@@ -11,7 +11,9 @@ Fut-TV provides football fans with a clean, responsive experience for following 
 | Competition | Source | Status |
 |---|---|---|
 | Campeonato Brasileiro Série A 2026 | CBF + football-data.org | Live |
-| Copa Libertadores 2026 | football-data.org | Live |
+| Copa do Brasil 2026 | CBF | Live |
+| Copa Libertadores 2026 | football-data.org + CONMEBOL | Live |
+| Copa Sulamericana 2026 | CONMEBOL scraping | Live |
 | Copa do Mundo FIFA 2026 | FIFA | Live |
 
 ## 🚀 Features
@@ -80,11 +82,12 @@ Fut-TV provides football fans with a clean, responsive experience for following 
 ### Data Sources
 
 | Source | Used For |
-|---|---|
-| CBF API | Brasileirão match data |
+|---|---|---|
+| CBF API | Brasileirão & Copa do Brasil match data |
 | football-data.org | Brasileirão & Libertadores matches + official standings |
 | FIFA API | Copa 2026 matches, standings, and bracket data |
-| CBF website scraper | Brasileirão broadcast channels |
+| CONMEBOL scraping | Sulamericana matches, standings, and broadcasts |
+| CBF website scraper | Brasileirão & Copa do Brasil broadcast channels |
 
 ### Deployment
 

@@ -11,9 +11,6 @@ const Matches = lazy(() => import("../pages/Matches/Matches"));
 const Standings = lazy(() => import("../pages/Standings/Standings"));
 const Bracket = lazy(() => import("../pages/Bracket/Bracket"));
 const MatchDetails = lazy(() => import("../pages/MatchDetails/MatchDetails"));
-// Rotas temporariamente desativadas (GroupDetails / TeamDetails):
-// const GroupDetails = lazy(() => import("../pages/GroupDetails/GroupDetails"));
-// const TeamDetails = lazy(() => import("../pages/TeamDetails/TeamDetails"));
 const NotFound = lazy(() => import("../pages/NotFound/NotFound"));
 
 function withSuspense(Component) {
@@ -37,8 +34,6 @@ export default function AppRoutes() {
         <Route path="/standings" element={withSuspense(Standings)} />
         <Route path="/bracket" element={withSuspense(Bracket)} />
         <Route path="/match/:id" element={withSuspense(MatchDetails)} />
-        {/*<Route path="/group/:letter" element={withSuspense(GroupDetails)} />*/}
-        {/*<Route path="/team/:code" element={withSuspense(TeamDetails)} />*/}
         <Route path="*" element={withSuspense(NotFound)} />
       </Route>
     </Routes>
