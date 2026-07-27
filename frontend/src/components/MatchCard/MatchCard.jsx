@@ -318,6 +318,9 @@ export default function MatchCard({ match, variant = "grid", size, colors, onCli
               >
                 {match.groupName || match.stageName || "Partida"}
               </Typography>
+              <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>
+                {dayjs(match.date).format("DD MMM")}
+              </Typography>
               <Chip
                 label={status.label}
                 size="small"
