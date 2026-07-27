@@ -17,6 +17,10 @@ export function useAllMatches({ competitionId, status = "all" } = {}) {
       if (status && status !== "all") params.status = status;
       const { data } = await api.get("/home/all", { params, signal });
       return data;
-    }
+    },
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false
   });
 }

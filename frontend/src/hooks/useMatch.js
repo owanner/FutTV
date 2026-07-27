@@ -9,6 +9,10 @@ export function useMatch(id) {
       const { data } = await api.get(`/matches/${id}/details`, { signal });
       return data;
     },
-    enabled: !!id
+    enabled: !!id,
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false
   });
 }
