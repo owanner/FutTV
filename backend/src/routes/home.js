@@ -106,8 +106,6 @@ router.get("/all", async (req, res) => {
       const statusFilter = req.query.status || "all";
       const compWhere = compId ? { competitionId: compId } : {};
 
-      const sevenDays = new Date(now);
-      sevenDays.setDate(sevenDays.getDate() + 7);
       const twoDaysAgo = new Date(now);
       twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 
@@ -128,10 +126,11 @@ router.get("/all", async (req, res) => {
             where: {
               ...compWhere,
               status: STATUS.SCHEDULED,
-              date: { gte: now, lte: sevenDays }
+              date: { gte: now }
             },
             include: { broadcasts: true },
-            orderBy: { date: "asc" }
+            orderBy: { date: "asc" },
+            take: 20
           }).then(matches => matches.map(m => ({ ...m, _feedSection: "upcoming" })))
         );
       }

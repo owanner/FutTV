@@ -72,7 +72,7 @@ export default function TopBar() {
               color: "white"
             }}
           >
-            FuteTV
+            Cadê meu time?
           </Typography>
         </Box>
       </Toolbar>

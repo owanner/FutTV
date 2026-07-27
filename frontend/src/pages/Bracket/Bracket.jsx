@@ -108,6 +108,12 @@ function MatchCard({ match, navigate, isThirdPlace }) {
   );
 }
 
+function hasRealTeams(match) {
+  const home = (match.homeTeam || "").trim();
+  const away = (match.awayTeam || "").trim();
+  return home.length > 0 && away.length > 0;
+}
+
 function PhaseBlock({ phase, matches, navigate }) {
   const isThirdPlace = phase.key === "THIRD_PLACE";
   const sortedMatches = [...matches].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -161,6 +167,25 @@ export default function Bracket({ competitionId: overrideId }) {
     return null;
   }, [matchesQuery.data, phases, competitionId]);
 
+  const realByPhase = useMemo(() => {
+    if (!byPhase) return null;
+    const result = {};
+    for (const [key, matches] of Object.entries(byPhase)) {
+      result[key] = matches.filter(hasRealTeams);
+    }
+    return result;
+  }, [byPhase]);
+
+  const activePhaseIndex = useMemo(() => {
+    if (!phases || !realByPhase) return 0;
+    for (let i = 0; i < phases.length; i++) {
+      const matches = realByPhase[phases[i].key] || [];
+      const allCompleted = matches.length > 0 && matches.every(m => m.status === 0);
+      if (!allCompleted) return i;
+    }
+    return phases.length;
+  }, [phases, realByPhase]);
+
   if (matchesQuery.isLoading) return <PageLoader />;
   if (matchesQuery.error) return <PageError message="Erro ao carregar fase eliminatória" />;
   if (!phases) {
@@ -178,9 +203,10 @@ export default function Bracket({ competitionId: overrideId }) {
     );
   }
 
-  const totalDecided = byPhase
-    ? Object.values(byPhase).reduce((acc, list) => acc + list.length, 0)
-    : 0;
+  const totalDecided = phases.reduce((acc, phase, index) => {
+    const list = realByPhase?.[phase.key] || [];
+    return acc + (index > activePhaseIndex ? 0 : list.length);
+  }, 0);
 
   return (
     <Stack spacing={2.5}>
@@ -193,7 +219,7 @@ export default function Bracket({ competitionId: overrideId }) {
             </Typography>
             <Chip
               size="small"
-              label={bracketQuery.isLoading ? "Gerando chaveamento…" : `${totalDecided} confronto(s)`}
+              label={bracketQuery.isLoading ? "Gerando chaveamento…" : `${totalDecided} confrontos definidos`}
               sx={{ height: 20, fontSize: "0.7rem", fontWeight: 700 }}
             />
           </Stack>
@@ -217,8 +243,9 @@ export default function Bracket({ competitionId: overrideId }) {
           variant={selectedPhase === "ALL" ? "filled" : "outlined"}
           sx={{ fontWeight: 700, flexShrink: 0, ...(selectedPhase === "ALL" ? { bgcolor: "primary.main", color: "#fff" } : {}) }}
         />
-        {phases.map((phase) => {
-          const count = byPhase?.[phase.key]?.length || 0;
+        {phases.map((phase, index) => {
+          const rawCount = realByPhase?.[phase.key]?.length || 0;
+          const count = index > activePhaseIndex ? 0 : rawCount;
           return (
             <Chip
               key={phase.key}
@@ -233,11 +260,11 @@ export default function Bracket({ competitionId: overrideId }) {
 
       {phases
         .filter((phase) => selectedPhase === "ALL" || selectedPhase === phase.key)
-        .map((phase) => (
+        .map((phase, index) => (
           <PhaseBlock
             key={phase.key}
             phase={phase}
-            matches={byPhase?.[phase.key] || []}
+            matches={index > activePhaseIndex ? [] : (realByPhase?.[phase.key] || [])}
             navigate={navigate}
           />
         ))}

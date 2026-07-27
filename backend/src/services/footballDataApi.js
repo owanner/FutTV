@@ -7,6 +7,7 @@
  */
 
 const axios = require("axios");
+const { isSameTeam } = require("../utils/textUtils");
 
 const api = axios.create({
   baseURL: "https://api.football-data.org/v4",
@@ -78,4 +79,41 @@ async function getStandings(leagueCode, season) {
   });
 }
 
-module.exports = { getMatches, getStandings, withRetry };
+/**
+ * Fetch match details (events + lineups) for a specific match.
+ * @param {number} matchId — football-data.org match id
+ * @returns {object|null} { match: { events, lineups, ... } } or null on failure
+ */
+async function getMatchDetails(matchId) {
+  return withRetry(async () => {
+    const response = await api.get(`/matches/${matchId}`);
+    return response.data;
+  }).catch(() => null);
+}
+
+/**
+ * Find a football-data.org match by team names within a competition/season.
+ * Returns the match's numeric ID (or the full match object) if a match between
+ * those teams is found, otherwise null.
+ * @param {string} leagueCode  e.g. "BSA", "CLI"
+ * @param {string} season      e.g. "2026"
+ * @param {string} homeTeamName
+ * @param {string} awayTeamName
+ * @returns {object|null} { matchId, match } or null
+ */
+async function findMatchByTeams(leagueCode, season, homeTeamName, awayTeamName) {
+  try {
+    const matches = await getMatches(leagueCode, season);
+    for (const m of matches) {
+      if (!m.homeTeam?.name || !m.awayTeam?.name) continue;
+      if (isSameTeam(m.homeTeam.name, homeTeamName) && isSameTeam(m.awayTeam.name, awayTeamName)) {
+        return { matchId: m.id, match: m };
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+module.exports = { getMatches, getStandings, getMatchDetails, findMatchByTeams, withRetry };

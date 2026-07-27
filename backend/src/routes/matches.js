@@ -12,7 +12,7 @@
 const express = require("express");
 const router = express.Router();
 const prisma = require("../database/prisma");
-const fifaApi = require("../services/fifaApi");
+const detailsService = require("../services/detailsService");
 const cache = require("../utils/cache");
 const { competitionFilter } = require("../utils/competitionFilter");
 const { STATUS } = require("../utils/matchStatus");
@@ -188,15 +188,12 @@ router.get("/:id/details", async (req, res) => {
         throw err;
       }
 
-      const [timelineResult, liveResult] = await Promise.allSettled([
-        fifaApi.getTimeline(req.params.id),
-        fifaApi.getLive(req.params.id)
-      ]);
+      const details = await detailsService.fetchDetails(match);
 
       return {
         match,
-        timeline: timelineResult.status === "fulfilled" ? timelineResult.value : null,
-        live: liveResult.status === "fulfilled" ? liveResult.value : null
+        timeline: details.timeline,
+        live: details.live
       };
     }, CACHE_TTL.DETAILS);
   } catch (error) {

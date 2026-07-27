@@ -153,7 +153,7 @@ export default function Home() {
               <Typography variant="h6" sx={{ fontWeight: 700, color: "text.secondary" }}>
                 {hasNoMoreRounds
                   ? "O evento não possui mais jogos a acontecer"
-                  : "Nenhum jogo encontrado"}
+                  : "Nenhum jogo próximo encontrado"}
               </Typography>
               {!hasNoMoreRounds && (
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
