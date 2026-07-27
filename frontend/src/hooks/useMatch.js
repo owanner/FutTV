@@ -15,6 +15,10 @@ export function useMatch(id) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     refetchOnMount: "always",
-    placeholderData: undefined
+    placeholderData: undefined,
+    retry: (failureCount, error) => {
+      if (error?.response?.status === 404) return false;
+      return failureCount < 2;
+    }
   });
 }

@@ -15,6 +15,28 @@ const formatStanding = require("../utils/formatStanding");
 const annotateQualifies = require("../utils/annotateQualifies");
 const { competitionFilter } = require("../utils/competitionFilter");
 
+const STANDING_SELECT = {
+  id: true,
+  competitionId: true,
+  seasonId: true,
+  groupId: true,
+  groupName: true,
+  teamId: true,
+  teamName: true,
+  teamCode: true,
+  badge: true,
+  position: true,
+  played: true,
+  wins: true,
+  draws: true,
+  losses: true,
+  goalsFor: true,
+  goalsAgainst: true,
+  goalDifference: true,
+  points: true,
+  qualifies: true
+};
+
 function setCacheHeaders(res, maxAge, sMaxAge) {
   res.set("Cache-Control", `public, max-age=${maxAge}, s-maxage=${sMaxAge}`);
 }
@@ -38,6 +60,7 @@ router.get("/", async (req, res) => {
     await getCachedOrFetch(req, res, async () => {
       const standings = await prisma.standing.findMany({
         where: competitionFilter(req),
+        select: STANDING_SELECT,
         orderBy: [{ groupName: "asc" }, { position: "asc" }]
       });
       return annotateQualifies(standings.map(formatStanding));
@@ -54,6 +77,7 @@ router.get("/groups", async (req, res) => {
     await getCachedOrFetch(req, res, async () => {
       const standings = await prisma.standing.findMany({
         where: competitionFilter(req),
+        select: STANDING_SELECT,
         orderBy: [{ groupName: "asc" }, { position: "asc" }]
       });
 

@@ -13,11 +13,17 @@ import useNav from "../../hooks/useNav";
 export default function MatchDetails() {
   const { id } = useParams();
   const navigate = useNav();
-  const { data, isLoading, error } = useMatch(id);
+  const { data, isLoading, error, isError } = useMatch(id);
 
   if (isLoading) return <PageLoader />;
-  if (error) return <PageError message="Erro ao carregar partida" />;
-  if (!data?.match) return <PageError message="Partida não encontrada" />;
+  if (isError || error) {
+    console.error("[MatchDetails] Query error:", error);
+    return <PageError message="Erro ao carregar partida" />;
+  }
+  if (!data?.match) {
+    console.error("[MatchDetails] No match data:", data);
+    return <PageError message="Partida não encontrada" />;
+  }
 
   const match = data.match;
   const competition = getCompetition(match.competitionId);

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useParams } from "react";
+import { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import ErrorBoundary from "../components/ErrorBoundary/ErrorBoundary";
@@ -23,12 +23,6 @@ function withSuspense(Component) {
   );
 }
 
-// Wrapper that forces remount when match ID changes
-function MatchDetailsWrapper() {
-  const { id } = useParams();
-  return <MatchDetails key={id} />;
-}
-
 export default function AppRoutes() {
   return (
     <Routes>
@@ -39,7 +33,7 @@ export default function AppRoutes() {
         <Route path="/matches" element={withSuspense(Matches)} />
         <Route path="/standings" element={withSuspense(Standings)} />
         <Route path="/bracket" element={withSuspense(Bracket)} />
-        <Route path="/match/:id" element={withSuspense(MatchDetailsWrapper)} />
+        <Route path="/match/:id" element={withSuspense(MatchDetails)} />
         <Route path="*" element={withSuspense(NotFound)} />
       </Route>
     </Routes>

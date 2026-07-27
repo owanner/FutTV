@@ -17,6 +17,33 @@ const cache = require("../utils/cache");
 const { competitionFilter } = require("../utils/competitionFilter");
 const { STATUS } = require("../utils/matchStatus");
 
+const MATCH_SELECT = {
+  id: true,
+  competitionId: true,
+  seasonId: true,
+  stageId: true,
+  groupId: true,
+  groupName: true,
+  stageName: true,
+  homeTeam: true,
+  homeFlag: true,
+  awayTeam: true,
+  awayFlag: true,
+  homeCode: true,
+  awayCode: true,
+  date: true,
+  round: true,
+  stadium: true,
+  city: true,
+  referee: true,
+  attendance: true,
+  status: true,
+  homeScore: true,
+  awayScore: true,
+  manuallyAdjusted: true,
+  broadcasts: { select: { id: true, name: true, logo: true, url: true, language: true } }
+};
+
 const CACHE_TTL = {
   LIVE: 15_000,
   UPCOMING: 120_000,
@@ -48,7 +75,7 @@ router.get("/", async (req, res) => {
     await getCachedOrFetch(req, res, () =>
       prisma.match.findMany({
         where: { status: { not: STATUS.CANCELLED }, ...competitionFilter(req) },
-        include: { broadcasts: true },
+        select: MATCH_SELECT,
         orderBy: { date: "asc" }
       }),
       CACHE_TTL.DEFAULT
@@ -94,7 +121,7 @@ router.get("/stages", async (req, res) => {
     await getCachedOrFetch(req, res, async () => {
       const matches = await prisma.match.findMany({
         where: { status: { not: STATUS.CANCELLED }, ...competitionFilter(req) },
-        include: { broadcasts: true },
+        select: MATCH_SELECT,
         orderBy: { date: "asc" }
       });
 
@@ -129,7 +156,7 @@ router.get("/upcoming", async (req, res) => {
     await getCachedOrFetch(req, res, () =>
       prisma.match.findMany({
         where: { status: STATUS.SCHEDULED, ...competitionFilter(req) },
-        include: { broadcasts: true },
+        select: MATCH_SELECT,
         orderBy: { date: "asc" }
       }),
       CACHE_TTL.UPCOMING
@@ -146,7 +173,7 @@ router.get("/live", async (req, res) => {
     await getCachedOrFetch(req, res, () =>
       prisma.match.findMany({
         where: { status: STATUS.LIVE, ...competitionFilter(req) },
-        include: { broadcasts: true }
+        select: MATCH_SELECT
       }),
       CACHE_TTL.LIVE
     );
@@ -162,7 +189,7 @@ router.get("/finished", async (req, res) => {
     await getCachedOrFetch(req, res, () =>
       prisma.match.findMany({
         where: { status: STATUS.FINISHED, ...competitionFilter(req) },
-        include: { broadcasts: true },
+        select: MATCH_SELECT,
         orderBy: { date: "desc" }
       }),
       CACHE_TTL.FINISHED
@@ -179,7 +206,7 @@ router.get("/:id/details", async (req, res) => {
     await getCachedOrFetch(req, res, async () => {
       const match = await prisma.match.findUnique({
         where: { id: req.params.id },
-        include: { broadcasts: true }
+        select: MATCH_SELECT
       });
 
       if (!match) {
@@ -188,7 +215,12 @@ router.get("/:id/details", async (req, res) => {
         throw err;
       }
 
-      const details = await detailsService.fetchDetails(match);
+      let details = { timeline: null, live: null };
+      try {
+        details = await detailsService.fetchDetails(match);
+      } catch (detailError) {
+        console.error("[match details] fetchDetails error:", detailError.message);
+      }
 
       return {
         match,
@@ -200,7 +232,7 @@ router.get("/:id/details", async (req, res) => {
     if (error.statusCode === 404) {
       return res.status(404).json({ error: error.message });
     }
-    console.error(error);
+    console.error("[match details] Error:", error);
     res.status(500).json({ error: "Erro ao buscar detalhes" });
   }
 });
@@ -211,7 +243,7 @@ router.get("/:id", async (req, res) => {
     await getCachedOrFetch(req, res, async () => {
       const match = await prisma.match.findUnique({
         where: { id: req.params.id },
-        include: { broadcasts: true }
+        select: MATCH_SELECT
       });
 
       if (!match) {

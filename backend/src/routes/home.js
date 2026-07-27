@@ -19,6 +19,32 @@ const {
 } = require("../utils/dateHelpers");
 const { STATUS } = require("../utils/matchStatus");
 
+const MATCH_SELECT = {
+  id: true,
+  competitionId: true,
+  seasonId: true,
+  stageId: true,
+  groupId: true,
+  groupName: true,
+  stageName: true,
+  homeTeam: true,
+  homeFlag: true,
+  awayTeam: true,
+  awayFlag: true,
+  homeCode: true,
+  awayCode: true,
+  date: true,
+  round: true,
+  stadium: true,
+  city: true,
+  referee: true,
+  attendance: true,
+  status: true,
+  homeScore: true,
+  awayScore: true,
+  broadcasts: { select: { id: true, name: true, logo: true, url: true, language: true } }
+};
+
 function setCacheHeaders(res, maxAge, sMaxAge) {
   res.set("Cache-Control", `public, max-age=${maxAge}, s-maxage=${sMaxAge}`);
 }
@@ -46,24 +72,26 @@ router.get("/", async (req, res) => {
       const [liveMatches, todayMatches, todayResults, tomorrowMatches, groupLeaders] = await Promise.all([
         prisma.match.findMany({
           where: { status: STATUS.LIVE, ...compFilter },
-          include: { broadcasts: true }
+          select: MATCH_SELECT
         }),
         prisma.match.findMany({
           where: { date: { gte: startOfToday(), lte: endOfToday() }, status: { not: STATUS.CANCELLED }, ...compFilter },
-          include: { broadcasts: true },
+          select: MATCH_SELECT,
           orderBy: { date: "asc" }
         }),
         prisma.match.findMany({
           where: { status: STATUS.FINISHED, date: { gte: startOfToday(), lte: endOfToday() }, ...compFilter },
+          select: MATCH_SELECT,
           orderBy: { date: "desc" }
         }),
         prisma.match.findMany({
           where: { date: { gte: startOfTomorrow(), lte: endOfTomorrow() }, status: { not: STATUS.CANCELLED }, ...compFilter },
-          include: { broadcasts: true },
+          select: MATCH_SELECT,
           orderBy: { date: "asc" }
         }),
         prisma.standing.findMany({
           where: { position: 1, ...compFilter },
+          select: { id: true, competitionId: true, groupName: true, teamName: true, badge: true, position: true },
           orderBy: { groupName: "asc" }
         })
       ]);
@@ -72,7 +100,7 @@ router.get("/", async (req, res) => {
       if (!featuredMatch) {
         featuredMatch = await prisma.match.findFirst({
           where: { status: STATUS.SCHEDULED, date: { gte: now }, ...compFilter },
-          include: { broadcasts: true },
+          select: MATCH_SELECT,
           orderBy: { date: "asc" }
         });
       }
@@ -115,7 +143,7 @@ router.get("/all", async (req, res) => {
         fetches.push(
           prisma.match.findMany({
             where: { ...compWhere, status: STATUS.LIVE },
-            include: { broadcasts: true }
+            select: MATCH_SELECT
           }).then(matches => matches.map(m => ({ ...m, _feedSection: "live" })))
         );
       }
@@ -128,7 +156,7 @@ router.get("/all", async (req, res) => {
               status: STATUS.SCHEDULED,
               date: { gte: now }
             },
-            include: { broadcasts: true },
+            select: MATCH_SELECT,
             orderBy: { date: "asc" },
             take: 20
           }).then(matches => matches.map(m => ({ ...m, _feedSection: "upcoming" })))
@@ -143,7 +171,7 @@ router.get("/all", async (req, res) => {
               status: STATUS.FINISHED,
               date: { gte: twoDaysAgo, lte: now }
             },
-            include: { broadcasts: true },
+            select: MATCH_SELECT,
             orderBy: { date: "desc" }
           }).then(matches => matches.map(m => ({ ...m, _feedSection: "recent" })))
         );
