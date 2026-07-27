@@ -178,4 +178,4 @@ function normalizeLineups(lineups, match) {
   };
 }
 
-module.exports = { getMatchDetails, findFixture, isConfigured };
+module.exports = { getMatchDetails, findFixture, isConfigured, normalizeTimeline, normalizeLineups, getRequest };
