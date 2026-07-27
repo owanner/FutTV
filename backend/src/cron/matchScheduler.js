@@ -101,13 +101,22 @@ async function tickCompetition(comp) {
     }
 
     // 1b) Has a SCHEDULED match whose kickoff has already passed — probably
-    //     live but the DB status hasn't been updated yet (CBF inferStatus
-    //     can't tell "live" from "scheduled", and football-data enrichment
-    //     only runs on sync). Treat as live-ish: refresh fast.
+    //     live but the DB status hasn't been updated yet (CBF / CONMEBOL
+    //     infer status by date and may not have marked it as live). Promote
+    //     them to LIVE so the frontend shows them as "Ao VIVO" immediately,
+    //     then call refreshLiveScores to get actual scores.
     const stale = await hasStaleScheduledMatch(compId);
     if (stale) {
       if (shouldRun(compId, MINUTE, "stale-scheduled")) {
-        console.log(`⏱ [${comp.shortName || comp.name}] STALE-SCHEDULED — refreshLiveScores`);
+        await prisma.match.updateMany({
+          where: {
+            competitionId: compId,
+            status: 1,
+            date: { lte: new Date() }
+          },
+          data: { status: 3 }
+        });
+        console.log(`⏱ [${comp.shortName || comp.name}] STALE-SCHEDULED — promoted to LIVE, refreshLiveScores`);
         await refreshLiveScores(compId);
       }
       return;

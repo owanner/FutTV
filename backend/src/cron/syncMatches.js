@@ -338,7 +338,8 @@ async function syncConmebolCompetition(comp) {
     const now = new Date();
     const twoHours = 2 * 60 * 60 * 1000;
     const isFinished = f.fixtureDate.getTime() + twoHours < now.getTime();
-    const status = isFinished ? 0 : 1;
+    const isLive = !isFinished && f.fixtureDate.getTime() <= now.getTime();
+    const status = isFinished ? 0 : isLive ? 3 : 1;
 
     const matchData = {
       competitionId: comp.id,
@@ -360,8 +361,8 @@ async function syncConmebolCompetition(comp) {
       referee: null,
       attendance: null,
       status,
-      homeScore: isFinished ? null : null, // CONMEBOL pages don't expose scores
-      awayScore: isFinished ? null : null
+      homeScore: null, // CONMEBOL pages don't expose scores
+      awayScore: null
     };
 
     await prisma.match.upsert({
@@ -417,7 +418,9 @@ async function syncCompetition(compId) {
  * - CBF competitions: pulls scores+status from football-data.org and matches
  *   against existing DB rows (no CBF API call required).
  * - football-data competitions: full refresh (already light — single endpoint).
- * - fifa/conmebol: skipped (no cheap score-only path); use syncCompetition.
+ * - fifa competitions: full refresh (FIFA API matches include scores+status).
+ * - conmebol competitions: promote stale-scheduled matches to LIVE by date
+ *   (no cheap score-only path, but at least status gets corrected quickly).
  *
  * Used by the scheduler for the "1-minute live cadence" path.
  */
@@ -432,8 +435,29 @@ async function refreshLiveScores(compId) {
       // Libertadores — football-data is the source itself, so a normal sync here
       // both updates scores and status in one cheap call.
       await syncFootballDataCompetition(comp);
+    } else if (comp.apiProvider === "fifa") {
+      // FIFA API returns live scores and status directly in the match data.
+      await syncFifaCompetition(comp);
+    } else if (comp.apiProvider === "conmebol") {
+      // Promote recently-kicked-off matches to LIVE.
+      await prisma.match.updateMany({
+        where: {
+          competitionId: comp.id,
+          status: 1,
+          date: { lte: new Date(), gte: new Date(Date.now() - 3 * 60 * 60 * 1000) }
+        },
+        data: { status: 3 }
+      });
+      // Finish matches that ended more than 2 hours ago.
+      await prisma.match.updateMany({
+        where: {
+          competitionId: comp.id,
+          status: 3,
+          date: { lt: new Date(Date.now() - 2 * 60 * 60 * 1000) }
+        },
+        data: { status: 0 }
+      });
     }
-    // fifa / conmebol: no lightweight path -> no-op (handled by heavier sync)
   } catch (error) {
     console.error(`❌ [${comp.name}] Erro no refresh de placares: ${error.message}`);
   }

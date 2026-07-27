@@ -64,17 +64,23 @@ function parseCbfDate(dateStr, timeStr) {
 /**
  * Infer match status from CBF data.
  * CBF doesn't have an explicit status field — we infer from date comparison.
- * 0 = finished (date is in the past), 1 = scheduled (date is in the future)
+ * 0 = finished (date + 2h is in the past)
+ * 3 = live (date is in the past but < 2h ago)
+ * 1 = scheduled (date is in the future)
  */
 function inferStatus(match) {
   const matchDate = parseCbfDate(match.data, match.hora);
   if (!matchDate) return 1;
 
   const now = new Date();
-  // Consider a match finished if it's at least 2 hours old (to account for match duration)
+  const kickoffMs = matchDate.getTime();
   const twoHoursMs = 2 * 60 * 60 * 1000;
-  if (matchDate.getTime() + twoHoursMs < now.getTime()) {
+
+  if (kickoffMs + twoHoursMs < now.getTime()) {
     return 0; // finished
+  }
+  if (kickoffMs <= now.getTime()) {
+    return 3; // live
   }
   return 1; // scheduled
 }
@@ -118,6 +124,7 @@ function inferCbrStage(round, competitionId, status) {
 function buildMatchData(match, compId, seasonId) {
   const status = inferStatus(match);
   const isFinished = status === 0;
+  const isLive = status === 3;
 
   // Parse scores — Copa do Brasil and knockouts may go to penalties
   const homeGoals = parseInt(match.mandante?.gols);
@@ -129,8 +136,8 @@ function buildMatchData(match, compId, seasonId) {
   // We store the regular-time score in homeScore/awayScore, and the
   // penalty shoot-out score in the `panaltis`-prefixed fields below via
   // stadium note (kept simple — future schema add could store pens).
-  let homeScore = isFinished ? (isNaN(homeGoals) ? 0 : homeGoals) : null;
-  let awayScore = isFinished ? (isNaN(awayGoals) ? 0 : awayGoals) : null;
+  let homeScore = (isFinished || isLive) ? (isNaN(homeGoals) ? 0 : homeGoals) : null;
+  let awayScore = (isFinished || isLive) ? (isNaN(awayGoals) ? 0 : awayGoals) : null;
 
   const stageName = match.campeonato?.nome_categoria
     || inferCbrStage(match.rodada, compId, status)
