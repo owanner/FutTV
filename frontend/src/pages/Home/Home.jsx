@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 import { Box, Chip, Stack, Typography, Button, Skeleton } from "@mui/material";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
@@ -54,18 +54,28 @@ export default function Home() {
   const { data: statusMap } = useCompetitionsStatus();
   const [filterComp, setFilterComp] = useState(ALL_ID);
 
-  const visibleCompetitions = allCompetitions.filter((c) => {
-    const st = statusMap?.[c.id];
-    if (!st) return true; // ainda carregando / sem status -> mantém visível
-    if (st.hasLive) return true;
-    if (st.hasUpcoming && st.nextMatchDate) {
-      return dayjs(st.nextMatchDate).isBefore(dayjs().add(HOME_HORIZON_DAYS, "day"));
-    }
-    return false;
-  });
+  const visibleCompetitions = useMemo(() =>
+    allCompetitions.filter((c) => {
+      const st = statusMap?.[c.id];
+      if (!st) return true;
+      if (st.hasLive) return true;
+      if (st.hasUpcoming && st.nextMatchDate) {
+        return dayjs(st.nextMatchDate).isBefore(dayjs().add(HOME_HORIZON_DAYS, "day"));
+      }
+      return false;
+    }),
+  [allCompetitions, statusMap]);
 
   const activeCompId = filterComp === ALL_ID ? undefined : filterComp;
-  const { data, isLoading, isError } = useAllMatches({ competitionId: activeCompId });
+  const hasLive = useMemo(() => {
+    // We'll determine this from the data
+    return false;
+  }, []);
+
+  const { data, isLoading, isError } = useAllMatches({
+    competitionId: activeCompId,
+    liveRefetch: true // Always enable for home page to keep live scores fresh
+  });
 
   const live = data?.live || [];
   const upcoming = data?.upcoming || [];
@@ -74,9 +84,8 @@ export default function Home() {
 
   const featuredUpcoming = live.length === 0 ? upcoming[0] : null;
 
-  const activeColors = activeCompId
-    ? allCompetitions.find((c) => c.id === activeCompId)?.colors
-    : undefined;
+  // Use competition-specific colors for each match, not a single active color
+  // The MatchCard will use match.competitionColors for each individual match
 
   return (
     <Stack spacing={3} sx={{ pt: 0.5 }}>
@@ -165,17 +174,17 @@ export default function Home() {
             </Box>
           )}
 
-          {/* Hero — all live matches or next upcoming */}
+          {/* Hero — ALL live matches (not just first) with correct competition colors */}
           {live.length > 0 && (
             <Stack spacing={2} sx={{ mb: 1 }}>
               {live.map((m) => (
-                <MatchCard key={m.id} match={m} variant="hero" colors={activeColors || m.competitionColors} />
+                <MatchCard key={m.id} match={m} variant="hero" colors={m.competitionColors} />
               ))}
             </Stack>
           )}
 
           {live.length === 0 && featuredUpcoming && (
-            <MatchCard match={featuredUpcoming} variant="hero" colors={activeColors || featuredUpcoming.competitionColors} />
+            <MatchCard match={featuredUpcoming} variant="hero" colors={featuredUpcoming.competitionColors} />
           )}
 
           {/* Upcoming */}
