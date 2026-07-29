@@ -7,6 +7,7 @@ const prisma = require("../database/prisma");
 const fifaApi = require("../services/fifaApi");
 const footballDataApi = require("../services/footballDataApi");
 const cbfApi = require("../services/cbfApi");
+const apiFootball = require("../services/apiFootball");
 const conmebolScraper = require("../services/conmebolScraper");
 const { competitions } = require("../config/competitions");
 const { isSameTeam } = require("../utils/textUtils");
@@ -551,6 +552,56 @@ async function refreshLiveScores(compId) {
       // FIFA API returns live scores and status directly in the match data.
       await syncFifaCompetition(comp);
     } else if (comp.apiProvider === "conmebol") {
+      // Fetch live scores from apiFootball (CONMEBOL scraper doesn't expose scores)
+      const liveScores = await apiFootball.getLiveScores(compId, comp.config.footballDataSeason || "2026");
+      if (liveScores.length > 0) {
+        let scoresUpdated = 0;
+        let statusUpdated = 0;
+        for (const ls of liveScores) {
+          const matches = await prisma.match.findMany({
+            where: {
+              competitionId: compId,
+              OR: [
+                { homeTeam: ls.homeTeam },
+                { awayTeam: ls.awayTeam }
+              ]
+            },
+            select: { id: true, homeTeam: true, awayTeam: true, status: true, manuallyAdjusted: true }
+          });
+          for (const m of matches) {
+            if (m.manuallyAdjusted) continue;
+            if (!isSameTeam(m.homeTeam, ls.homeTeam) || !isSameTeam(m.awayTeam, ls.awayTeam)) continue;
+
+            // Update scores
+            if (ls.homeGoals != null && ls.awayGoals != null) {
+              await prisma.match.update({
+                where: { id: m.id },
+                data: { homeScore: ls.homeGoals, awayScore: ls.awayGoals }
+              });
+              scoresUpdated++;
+            }
+
+            // Update status: apiFootball FT/AET/PEN -> FINISHED(0), live statuses -> LIVE(3)
+            const apiStatus = ls.status;
+            let newStatus = null;
+            if (["FT", "AET", "PEN"].includes(apiStatus) && m.status !== 0) {
+              newStatus = 0;
+            } else if (["1H", "2H", "HT", "ET", "P", "BT"].includes(apiStatus) && m.status !== 3) {
+              newStatus = 3;
+            }
+            if (newStatus !== null) {
+              await prisma.match.update({
+                where: { id: m.id },
+                data: { status: newStatus }
+              });
+              statusUpdated++;
+            }
+          }
+        }
+        if (scoresUpdated > 0) console.log(`  📊 ${scoresUpdated} placares atualizados via apiFootball`);
+        if (statusUpdated > 0) console.log(`  📊 ${statusUpdated} status atualizados via apiFootball`);
+      }
+
       // Promote recently-kicked-off matches to LIVE.
       await prisma.match.updateMany({
         where: {

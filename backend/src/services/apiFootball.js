@@ -178,4 +178,36 @@ function normalizeLineups(lineups, match) {
   };
 }
 
-module.exports = { getMatchDetails, findFixture, isConfigured, normalizeTimeline, normalizeLineups, getRequest };
+/**
+ * Fetch all live + recently finished fixtures for a competition.
+ * Returns an array of { homeTeam, awayTeam, homeGoals, awayGoals, status, statusShort }.
+ * Used by refreshLiveScores to update CONMEBOL match scores.
+ */
+async function getLiveScores(competitionId, season) {
+  const leagueId = LEAGUE_MAP[competitionId];
+  if (!leagueId || !isConfigured()) return [];
+
+  try {
+    const result = await getRequest("/fixtures", { league: leagueId, season: season || "2026" });
+    if (!result?.response) return [];
+
+    return result.response
+      .filter((f) => {
+        const s = f.fixture?.status?.short;
+        // Include live (1H, 2H, HT, ET, P, BT) and finished (FT, AET, PEN) matches
+        return ["1H", "2H", "HT", "ET", "P", "BT", "FT", "AET", "PEN"].includes(s);
+      })
+      .map((f) => ({
+        homeTeam: f.teams?.home?.name || "",
+        awayTeam: f.teams?.away?.name || "",
+        homeGoals: f.goals?.home ?? null,
+        awayGoals: f.goals?.away ?? null,
+        status: f.fixture?.status?.short || "",
+        statusLong: f.fixture?.status?.long || ""
+      }));
+  } catch {
+    return [];
+  }
+}
+
+module.exports = { getMatchDetails, getLiveScores, findFixture, isConfigured, normalizeTimeline, normalizeLineups, getRequest };
