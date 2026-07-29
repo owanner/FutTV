@@ -189,16 +189,16 @@ export default function Home() {
                   count={upcoming.length}
                   accent="#006A67"
                 />
-                {filterComp !== ALL_ID && (
-                  {/*<Button
+                {/*{filterComp !== ALL_ID && (
+                  <Button
                     size="small"
                     endIcon={<ArrowForward />}
                     onClick={() => navigate(`/matches?competition=${filterComp}`)}
                     sx={{ textTransform: "none", fontWeight: 700, fontSize: "0.8rem" }}
                   >
                     Ver todos
-                  </Button>*/}
-                )}
+                  </Button>
+                )}*/}
               </Stack>
               <Box
                 sx={{
