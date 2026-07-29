@@ -27,8 +27,8 @@ export function formatMatchDate(date) {
   const d = dayjs(date);
   const now = dayjs();
 
-  if (d.isSame(now, "day")) return "Hoje";
-  if (d.isSame(now.add(1, "day"), "day")) return "Amanhã";
+  if (d.isSame(now, "day")) return "hoje";
+  if (d.isSame(now.add(1, "day"), "day")) return "amanhã";
 
   // Current week: Monday (1) to Sunday (0)
   const startOfWeek = now.startOf("week").add(1, "day"); // Monday
