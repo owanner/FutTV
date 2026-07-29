@@ -64,6 +64,10 @@ function mapFbStatus(status) {
  * Map football-data.org stage codes to friendly Portuguese labels used in
  * the UI. The football-data "stage" field is a string identifier, not an
  * object, so we normalise it here.
+ *
+ * Competition-specific overrides are applied first:
+ * - Libertadores: PLAY_OFFS maps to "Oitavas de Final" (no Repescagem round)
+ * - Sulamericana: PLAY_OFFS maps to "Repescagem" (has a distinct playoff round)
  */
 const FB_STAGE_LABELS = {
   GROUP_STAGE: "Fase de Grupos",
@@ -77,8 +81,16 @@ const FB_STAGE_LABELS = {
   FINAL: "Final"
 };
 
-function normaliseFbStage(rawStage) {
+const FB_STAGE_OVERRIDES = {
+  libertadores2026: {
+    PLAY_OFFS: "Oitavas de Final"
+  }
+};
+
+function normaliseFbStage(rawStage, competitionId) {
   if (!rawStage) return "Fase de Grupos";
+  const override = FB_STAGE_OVERRIDES[competitionId]?.[rawStage];
+  if (override) return override;
   return FB_STAGE_LABELS[rawStage] || rawStage;
 }
 
@@ -93,7 +105,7 @@ function buildFootballDataMatchData(match, compId, seasonId) {
     stageId: stageRaw || "",
     groupId: group || null,
     groupName: group || null,
-    stageName: normaliseFbStage(stageRaw),
+    stageName: normaliseFbStage(stageRaw, compId),
     homeTeam: homeTeam.name || null,
     homeFlag: homeTeam.crest || null,
     awayTeam: awayTeam.name || null,
@@ -447,7 +459,7 @@ async function syncConmebolCompetition(comp) {
       stageId: f.stageName || null,
       groupId: null,
       groupName: null,
-      stageName: conmebolScraper.normaliseStage(f.stageName),
+      stageName: conmebolScraper.normaliseStage(f.stageName, comp.id),
       homeTeam: f.homeTeam,
       homeFlag: f.homeCrest || null,
       awayTeam: f.awayTeam,

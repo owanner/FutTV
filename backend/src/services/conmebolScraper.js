@@ -158,6 +158,10 @@ async function discoverFixtureIds(slug, startId = 1500, endId = 1800, opts = {})
 /**
  * Map a CONMEBOL fixture stage name (English) to a normalised Portuguese
  * stage label used in our DB.
+ *
+ * Competition-specific overrides are applied first:
+ * - Libertadores: "Knockout Round Play-offs" → "Oitavas de Final" (no Repescagem)
+ * - Sulamericana: "Knockout Round Play-offs" → "Repescagem" (has a distinct playoff)
  */
 const STAGE_LABELS = {
   "Group Stage": "Fase de Grupos",
@@ -170,8 +174,16 @@ const STAGE_LABELS = {
   "Finals": "Final"
 };
 
-function normaliseStage(rawStage) {
+const STAGE_OVERRIDES = {
+  libertadores2026: {
+    "Knockout Round Play-offs": "Oitavas de Final"
+  }
+};
+
+function normaliseStage(rawStage, competitionId) {
   if (!rawStage) return "Outros";
+  const override = STAGE_OVERRIDES[competitionId]?.[rawStage];
+  if (override) return override;
   return STAGE_LABELS[rawStage] || rawStage;
 }
 

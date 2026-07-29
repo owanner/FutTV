@@ -30,7 +30,7 @@ const STAGE_MAP = {
     FINAL: "Final",
   },
   sulamericana2026: {
-    PLAY_OFFS: "Oitavas de Final",
+    PLAY_OFFS: "Repescagem",
     QUARTER_FINALS: "Quartas de Final",
     SEMI_FINALS: "Semifinal",
   },
