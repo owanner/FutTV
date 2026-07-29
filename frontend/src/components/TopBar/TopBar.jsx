@@ -5,9 +5,9 @@ import {
   Box
 } from "@mui/material";
 
-import SportsSoccerIcon from "@mui/icons-material/SportsSoccer";
+import { SportsSoccer } from "@mui/icons-material";
 
-import useNav from "../../hooks/useNav";
+import { useNav } from "../../hooks/useNav";
 
 export default function TopBar() {
 
@@ -51,7 +51,7 @@ export default function TopBar() {
             "&:focus-visible": { outline: "2px solid white", outlineOffset: 2, borderRadius: 1 }
           }}
         >
-          <SportsSoccerIcon
+          <SportsSoccer
             sx={{
               fontSize: {
                 xs: 22,

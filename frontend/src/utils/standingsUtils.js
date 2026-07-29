@@ -82,12 +82,6 @@ export const BRASILEIRAO_ZONES = [
   { label: "Rebaixados", positions: "17-20", color: "#e53935" }
 ];
 
-/** Generic "advances / eliminated" legend for group-only CONMEBOL competitions. */
-export const ADVANCE_ZONES = [
-  { label: "Classificado", color: "#43a047" },
-  { label: "Eliminado", color: "#e53935" }
-];
-
 /** Sulamericana-specific legend: Oitavas (green), Repescagem (yellow), Eliminado (red). */
 export const SUDAMERICANA_ZONES = [
   { label: "Classificado", color: "#43a047" },

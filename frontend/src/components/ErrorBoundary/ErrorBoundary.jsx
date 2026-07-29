@@ -1,6 +1,6 @@
 import { Component } from "react";
 import { Box, Typography, Button } from "@mui/material";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
+import { ErrorOutlineOutlined } from "@mui/icons-material";
 
 /**
  * Catches JavaScript errors in the component tree and displays a fallback UI.
@@ -35,7 +35,7 @@ export default class ErrorBoundary extends Component {
             px: 2
           }}
         >
-          <ErrorOutlineIcon sx={{ fontSize: 64, color: "error.main" }} />
+          <ErrorOutlineOutlined sx={{ fontSize: 64, color: "error.main" }} />
           <Typography variant="h5" fontWeight={700}>
             Algo deu errado
           </Typography>

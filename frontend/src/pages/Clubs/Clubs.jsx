@@ -23,24 +23,19 @@ import {
   Groups,
   LiveTv,
 } from "@mui/icons-material";
-import dayjs from "dayjs";
-import "dayjs/locale/pt-br";
-
 import { useClubs, useClub } from "../../hooks/useClubs";
 import {
   filterClubs,
   filterMatches,
   groupMatchesByCompetition,
   groupMatchesByDate,
-  STATUS_FILTERS,
 } from "../../utils/clubsUtils";
+import { STATUS_FILTERS } from "../../utils/statusUtils";
 import { normalizeTeamName } from "../../utils/teamUtils";
 import MatchCard from "../../components/MatchCard/MatchCard";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
 import PageHeader from "../../components/PageHeader/PageHeader";
 import { PageError } from "../../components/PageLoader/PageLoader";
-
-dayjs.locale("pt-br");
 
 /* ─── ClubCard ──────────────────────────────────────────────────────── */
 function ClubCard({ club, expanded, onToggleExpand, upcomingCount, liveCount }) {

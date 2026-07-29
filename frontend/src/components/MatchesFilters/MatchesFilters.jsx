@@ -1,13 +1,7 @@
 import { Chip, Stack, TextField } from "@mui/material";
 import { useCompetition } from "../../contexts/CompetitionContext";
 import { getCompetition } from "../../config/competitions";
-
-const STATUS_OPTIONS = [
-  { value: "", label: "Todos" },
-  { value: "live", label: "Ao vivo", accent: "#DC2626" },
-  { value: "upcoming", label: "Próximos", accent: "#006A67" },
-  { value: "finished", label: "Encerrados", accent: "#475569" }
-];
+import { STATUS_FILTERS } from "../../utils/statusUtils";
 
 export default function MatchesFilters({ search, setSearch, status, setStatus }) {
   const { competitionId } = useCompetition();
@@ -28,7 +22,7 @@ export default function MatchesFilters({ search, setSearch, status, setStatus })
         }}
       />
       <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
-        {STATUS_OPTIONS.map(opt => (
+        {STATUS_FILTERS.map(opt => (
           <Chip
             key={opt.value}
             label={opt.label}

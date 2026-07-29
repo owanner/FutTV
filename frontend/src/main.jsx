@@ -6,7 +6,11 @@ import { BrowserRouter } from "react-router-dom";
 import { CompetitionProvider, useCompetition } from "./contexts/CompetitionContext";
 import createCompetitionTheme from "./theme/createCompetitionTheme";
 import App from "./App";
+import dayjs from "dayjs";
+import "dayjs/locale/pt-br";
 import "./index.css";
+
+dayjs.locale("pt-br");
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -1,6 +1,5 @@
 import { Card, CardContent, Typography, Stack, Chip, Box } from "@mui/material";
-import TvIcon from "@mui/icons-material/Tv";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import { Tv, OpenInNew } from "@mui/icons-material";
 import { sortBroadcasts } from "../../utils/broadcasts.js";
 
 export default function BroadcastList({ broadcasts, colors }) {
@@ -18,7 +17,7 @@ export default function BroadcastList({ broadcasts, colors }) {
     >
       <CardContent sx={{ py: 2, "&:last-child": { pb: 2 } }}>
         <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 1.5 }}>
-          <TvIcon sx={{ fontSize: 18, color: colors?.primary || "primary.main" }} />
+          <Tv sx={{ fontSize: 18, color: colors?.primary || "primary.main" }} />
           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
             Onde assistir
           </Typography>
@@ -42,7 +41,7 @@ export default function BroadcastList({ broadcasts, colors }) {
               label={
                 <Stack direction="row" spacing={0.5} alignItems="center">
                   <span>{channel.name}</span>
-                  {channel.url && <OpenInNewIcon sx={{ fontSize: 12, opacity: 0.5 }} />}
+                  {channel.url && <OpenInNew sx={{ fontSize: 12, opacity: 0.5 }} />}
                 </Stack>
               }
               href={channel.url || undefined}

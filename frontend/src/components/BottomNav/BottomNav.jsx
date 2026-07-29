@@ -12,7 +12,7 @@ import {
 
 import { useLocation } from "react-router-dom";
 
-import useNav from "../../hooks/useNav";
+import { useNav } from "../../hooks/useNav";
 
 export default function BottomNav() {
   const navigate = useNav();

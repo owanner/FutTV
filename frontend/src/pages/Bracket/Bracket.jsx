@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, Typography, Stack, Box, Chip } from "@mui/material";
-import { EmojiEvents as EmojiEventsIcon } from "@mui/icons-material";
+import { EmojiEvents } from "@mui/icons-material";
 import dayjs from "dayjs";
 
 import { useCompetition } from "../../contexts/CompetitionContext";
@@ -13,7 +13,7 @@ import {
   groupMatchesByPhase,
   CARD_SX
 } from "../../utils/standingsUtils";
-import useNav from "../../hooks/useNav";
+import { useNav } from "../../hooks/useNav";
 import { PageLoader, PageError } from "../../components/PageLoader/PageLoader";
 
 function TeamSide({ team, code, flag, score, winner }) {
@@ -65,7 +65,7 @@ function TeamSide({ team, code, flag, score, winner }) {
   );
 }
 
-function MatchCard({ match, navigate, isThirdPlace }) {
+function BracketMatchCard({ match, navigate, isThirdPlace }) {
   const status = getStatus(match.status);
   const showScore = match.status === 0 || match.status === 3;
   const homeScore = showScore ? match.homeScore ?? 0 : null;
@@ -137,7 +137,7 @@ function PhaseBlock({ phase, matches, navigate }) {
         }}
       >
         {sortedMatches.map((m) => (
-          <MatchCard key={m.id} match={m} navigate={navigate} isThirdPlace={isThirdPlace} />
+          <BracketMatchCard key={m.id} match={m} navigate={navigate} isThirdPlace={isThirdPlace} />
         ))}
         {sortedMatches.length === 0 && (
           <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
@@ -193,7 +193,7 @@ export default function Bracket({ competitionId: overrideId }) {
       <Card>
         <CardContent>
           <Stack spacing={1} alignItems="center" sx={{ py: 2 }}>
-            <EmojiEventsIcon sx={{ fontSize: 40, color: "text.secondary" }} />
+            <EmojiEvents sx={{ fontSize: 40, color: "text.secondary" }} />
             <Typography color="text.secondary" sx={{ fontWeight: 700 }}>
               Esta competição não possui fase de eliminatória.
             </Typography>
@@ -213,7 +213,7 @@ export default function Bracket({ competitionId: overrideId }) {
       <Card>
         <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-            <EmojiEventsIcon color="primary" fontSize="small" />
+            <EmojiEvents color="primary" fontSize="small" />
             <Typography variant="body2" sx={{ fontWeight: 700 }}>
               Fase eliminatória
             </Typography>

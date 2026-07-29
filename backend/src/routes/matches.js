@@ -13,36 +13,9 @@ const express = require("express");
 const router = express.Router();
 const prisma = require("../database/prisma");
 const detailsService = require("../services/detailsService");
-const cache = require("../utils/cache");
 const { competitionFilter } = require("../utils/competitionFilter");
 const { STATUS } = require("../utils/matchStatus");
-
-const MATCH_SELECT = {
-  id: true,
-  competitionId: true,
-  seasonId: true,
-  stageId: true,
-  groupId: true,
-  groupName: true,
-  stageName: true,
-  homeTeam: true,
-  homeFlag: true,
-  awayTeam: true,
-  awayFlag: true,
-  homeCode: true,
-  awayCode: true,
-  date: true,
-  round: true,
-  stadium: true,
-  city: true,
-  referee: true,
-  attendance: true,
-  status: true,
-  homeScore: true,
-  awayScore: true,
-  manuallyAdjusted: true,
-  broadcasts: { select: { id: true, name: true, logo: true, url: true, language: true } }
-};
+const { MATCH_SELECT, setCacheHeaders, getCachedOrFetch } = require("../utils/routeHelpers");
 
 const CACHE_TTL = {
   LIVE: 15_000,
@@ -51,23 +24,6 @@ const CACHE_TTL = {
   DEFAULT: 60_000,
   DETAILS: 15_000,
 };
-
-function setCacheHeaders(res, maxAge, sMaxAge) {
-  res.set("Cache-Control", `public, max-age=${maxAge}, s-maxage=${sMaxAge}`);
-}
-
-async function getCachedOrFetch(req, res, fetchFn, ttlMs) {
-  const cacheKey = cache.key(req);
-  const cached = cache.get(cacheKey);
-  if (cached) {
-    res.set("X-Cache", "HIT");
-    return res.json(cached);
-  }
-  const data = await fetchFn();
-  cache.set(cacheKey, data, ttlMs);
-  res.set("X-Cache", "MISS");
-  res.json(data);
-}
 
 router.get("/", async (req, res) => {
   try {

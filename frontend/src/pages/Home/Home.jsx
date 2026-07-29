@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 
 import { Box, Chip, Stack, Typography, Button, Skeleton } from "@mui/material";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import { ArrowForward } from "@mui/icons-material";
 
 import { useAllMatches } from "../../hooks/useAllMatches";
 import { getAllCompetitions } from "../../config/competitions";
@@ -9,11 +9,8 @@ import { useCompetitionsStatus } from "../../hooks/useCompetitionsStatus";
 
 import MatchCard from "../../components/MatchCard/MatchCard";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
-import useNav from "../../hooks/useNav";
+import { useNav } from "../../hooks/useNav";
 import dayjs from "dayjs";
-import "dayjs/locale/pt-br";
-
-dayjs.locale("pt-br");
 
 const ALL_ID = "__all__";
 const HOME_HORIZON_DAYS = 30;
@@ -67,10 +64,6 @@ export default function Home() {
   [allCompetitions, statusMap]);
 
   const activeCompId = filterComp === ALL_ID ? undefined : filterComp;
-  const hasLive = useMemo(() => {
-    // We'll determine this from the data
-    return false;
-  }, []);
 
   const { data, isLoading, isError } = useAllMatches({
     competitionId: activeCompId,
@@ -199,7 +192,7 @@ export default function Home() {
                 {filterComp !== ALL_ID && (
                   <Button
                     size="small"
-                    endIcon={<ArrowForwardIcon />}
+                    endIcon={<ArrowForward />}
                     onClick={() => navigate(`/matches?competition=${filterComp}`)}
                     sx={{ textTransform: "none", fontWeight: 700, fontSize: "0.8rem" }}
                   >

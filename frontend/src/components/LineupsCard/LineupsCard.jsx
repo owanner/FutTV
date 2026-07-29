@@ -1,7 +1,7 @@
 import { Box, Card, CardContent, Typography, Divider, Stack, Chip } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
+import { MenuBook } from "@mui/icons-material";
 import { normalizeTeamName } from "../../utils/teamUtils";
 
 function getDisplayPlayerName(fullName) {
@@ -155,7 +155,7 @@ export default function LineupsCard({ homeFlag, awayFlag, homeTeam, awayTeam, li
     >
       <CardContent sx={{ px: { xs: 2, sm: 3 }, py: 2, "&:last-child": { pb: 2 } }}>
         <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 2 }}>
-          <MenuBookIcon sx={{ fontSize: 18, color: colors?.primary || "primary.main" }} />
+          <MenuBook sx={{ fontSize: 18, color: colors?.primary || "primary.main" }} />
           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
             Escalacoes
           </Typography>

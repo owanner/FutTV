@@ -14,9 +14,9 @@ import {
 import { getCompetition, getCompetitionFormat, hasGroupStage, hasKnockoutStage } from "../../config/competitions";
 import { useMatches } from "../../hooks/useMatches";
 import { useStandings } from "../../hooks/useStandings";
-import { normalizeText } from "../../utils/formatUtils";
 import { buildGroups } from "../../utils/standingsUtils";
-import { normalizeTeamName } from "../../utils/teamUtils";
+import { STATUS_FILTERS, splitByStatus } from "../../utils/statusUtils";
+import { filterMatches } from "../../utils/clubsUtils";
 import MatchCard from "../../components/MatchCard/MatchCard";
 import GroupStandings from "../../components/GroupStandings/GroupStandings";
 import FlatStandings from "../../components/FlatStandings/FlatStandings";
@@ -25,17 +25,8 @@ import SectionHeader from "../../components/SectionHeader/SectionHeader";
 import { PageLoader, PageError } from "../../components/PageLoader/PageLoader";
 import Bracket from "../Bracket/Bracket";
 
-import useNav from "../../hooks/useNav";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import SearchIcon from "@mui/icons-material/Search";
-import CloseIcon from "@mui/icons-material/Close";
-
-const STATUS_FILTERS = [
-  { value: "", label: "Todos" },
-  { value: "live", label: "Ao vivo", accent: "#DC2626" },
-  { value: "upcoming", label: "Próximos", accent: "#006A67" },
-  { value: "finished", label: "Encerrados", accent: "#475569" }
-];
+import { useNav } from "../../hooks/useNav";
+import { ArrowBack, Search, Close } from "@mui/icons-material";
 
 function MatchesTab({ competitionId }) {
   const { data, isLoading, error } = useMatches(competitionId);
@@ -49,28 +40,13 @@ function MatchesTab({ competitionId }) {
       competitionName: comp?.shortName || comp?.name || competitionId,
       competitionColors: comp?.colors
     };
-    return data.filter((m) => {
-      const needle = normalizeText(search);
-      const matchSearch =
-        !needle ||
-        normalizeText(normalizeTeamName(m.homeTeam)).includes(needle) ||
-        normalizeText(normalizeTeamName(m.awayTeam)).includes(needle) ||
-        normalizeText(m.homeTeam).includes(needle) ||
-        normalizeText(m.awayTeam).includes(needle);
-      let matchStatus = true;
-      if (status === "live") matchStatus = m.status === 3;
-      if (status === "upcoming") matchStatus = m.status === 1;
-      if (status === "finished") matchStatus = m.status === 0;
-      return matchSearch && matchStatus;
-    }).map((m) => ({ ...m, ...compMeta }));
+    return filterMatches(data, { search, status }).map((m) => ({ ...m, ...compMeta }));
   }, [data, search, status, competitionId]);
 
   if (isLoading) return <PageLoader />;
   if (error) return <PageError message="Erro ao carregar jogos" />;
 
-  const live = filtered.filter((m) => m.status === 3);
-  const upcoming = filtered.filter((m) => m.status === 1);
-  const finished = filtered.filter((m) => m.status === 0);
+  const { live, upcoming, finished } = splitByStatus(filtered);
 
   return (
     <Stack spacing={2}>
@@ -84,12 +60,12 @@ function MatchesTab({ competitionId }) {
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon fontSize="small" sx={{ color: "text.secondary" }} />
+                <Search fontSize="small" sx={{ color: "text.secondary" }} />
               </InputAdornment>
             ),
             endAdornment: search ? (
               <InputAdornment position="end">
-                <CloseIcon
+                <Close
                   fontSize="small"
                   onClick={() => setSearch("")}
                   sx={{ cursor: "pointer", color: "text.secondary" }}
@@ -296,7 +272,7 @@ export default function CompetitionDetail() {
             "&:hover": { color: "text.primary" }
           }}
         >
-          <ArrowBackIcon />
+          <ArrowBack />
         </Box>
         <Box
           sx={{

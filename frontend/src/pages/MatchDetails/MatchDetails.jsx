@@ -1,6 +1,6 @@
 import { Stack, Box, Typography } from "@mui/material";
 import { useParams } from "react-router-dom";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { ArrowBack } from "@mui/icons-material";
 import { useMatch } from "../../hooks/useMatch";
 import { getCompetition } from "../../config/competitions";
 import MatchDetailsHero from "../../components/MatchDetailsHero/MatchDetailsHero";
@@ -8,7 +8,7 @@ import BroadcastList from "../../components/BroadcastList/BroadcastList";
 import TimeLineCard from "../../components/TimeLineCard/TimeLineCard";
 import LineupsCard from "../../components/LineupsCard/LineupsCard";
 import { PageLoader, PageError } from "../../components/PageLoader/PageLoader";
-import useNav from "../../hooks/useNav";
+import { useNav } from "../../hooks/useNav";
 
 export default function MatchDetails() {
   const { id } = useParams();
@@ -44,7 +44,7 @@ export default function MatchDetails() {
             "&:hover": { color: "text.primary" }
           }}
         >
-          <ArrowBackIcon />
+          <ArrowBack />
         </Box>
         <Box
           sx={{

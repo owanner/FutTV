@@ -7,23 +7,9 @@ import MatchCard from "../../components/MatchCard/MatchCard";
 import MatchesFilters from "../../components/MatchesFilters/MatchesFilters";
 import PageHeader from "../../components/PageHeader/PageHeader";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
-import { normalizeText } from "../../utils/formatUtils";
-import { normalizeTeamName } from "../../utils/teamUtils";
+import { filterMatches } from "../../utils/clubsUtils";
+import { splitByStatus } from "../../utils/statusUtils";
 import { PageLoader, PageError } from "../../components/PageLoader/PageLoader";
-
-function groupByStatus(matches) {
-  const live = [];
-  const upcoming = [];
-  const finished = [];
-
-  for (const m of matches) {
-    if (m.status === 3) live.push(m);
-    else if (m.status === 0) finished.push(m);
-    else upcoming.push(m);
-  }
-
-  return { live, upcoming, finished };
-}
 
 export default function Matches() {
   const { data, isLoading, error } = useMatches();
@@ -32,29 +18,13 @@ export default function Matches() {
   const [status, setStatus] = useState("");
 
   const filteredMatches = useMemo(() => {
-    if (!data) return [];
-
-    return data.filter(match => {
-      const needle = normalizeText(search);
-      const matchesSearch =
-        normalizeText(normalizeTeamName(match.homeTeam)).includes(needle) ||
-        normalizeText(normalizeTeamName(match.awayTeam)).includes(needle) ||
-        normalizeText(match.homeTeam).includes(needle) ||
-        normalizeText(match.awayTeam).includes(needle);
-
-      let matchesStatus = true;
-      if (status === "live") matchesStatus = match.status === 3;
-      if (status === "upcoming") matchesStatus = match.status === 1;
-      if (status === "finished") matchesStatus = match.status === 0;
-
-      return matchesSearch && matchesStatus;
-    });
+    return filterMatches(data, { search, status });
   }, [data, search, status]);
 
   if (isLoading) return <PageLoader />;
   if (error) return <PageError message="Erro ao carregar partidas" />;
 
-  const { live, upcoming, finished } = groupByStatus(filteredMatches);
+  const { live, upcoming, finished } = splitByStatus(filteredMatches);
 
   const compColors = competition?.colors;
 

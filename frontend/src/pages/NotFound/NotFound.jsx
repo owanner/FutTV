@@ -1,6 +1,6 @@
 import { Box, Typography, Button } from "@mui/material";
-import SearchOffIcon from "@mui/icons-material/SearchOff";
-import useNav from "../../hooks/useNav";
+import { SearchOff } from "@mui/icons-material";
+import { useNav } from "../../hooks/useNav";
 
 export default function NotFound() {
   const navigate = useNav();
@@ -18,7 +18,7 @@ export default function NotFound() {
         px: 2
       }}
     >
-      <SearchOffIcon sx={{ fontSize: 64, color: "text.secondary" }} />
+      <SearchOff sx={{ fontSize: 64, color: "text.secondary" }} />
       <Typography variant="h5" fontWeight={700}>
         Página não encontrada
       </Typography>

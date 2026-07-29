@@ -8,15 +8,17 @@ import {
   Typography
 } from "@mui/material";
 
-import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
-import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
-import LiveTvOutlinedIcon from "@mui/icons-material/LiveTvOutlined";
+import {
+  FlagOutlined,
+  LocationOnOutlined,
+  LiveTvOutlined
+} from "@mui/icons-material";
 
 import dayjs from "dayjs";
 import { sortBroadcasts } from "../../utils/broadcasts";
 import { getStatus } from "../../utils/statusUtils";
 import { abbreviateTeamName, normalizeTeamName } from "../../utils/teamUtils";
-import useNav from "../../hooks/useNav";
+import { useNav } from "../../hooks/useNav";
 
 /* ─── TeamBlock ──────────────────────────────────────────────────────────
    A symmetric team block: crest centered on top, name centered below.
@@ -71,7 +73,7 @@ function TeamBlock({ flag, name, code, size = "md", dark = false, onClick }) {
             sx={{ width: dims.img[0], height: dims.img[1], objectFit: "contain" }}
           />
         ) : (
-          <FlagOutlinedIcon sx={{ color: dark ? "rgba(255,255,255,0.45)" : "text.secondary", fontSize: size === "lg" ? 30 : 24 }} />
+          <FlagOutlined sx={{ color: dark ? "rgba(255,255,255,0.45)" : "text.secondary", fontSize: size === "lg" ? 30 : 24 }} />
         )}
       </Box>
       <Typography
@@ -226,7 +228,7 @@ function FooterMeta({ match, broadcasts, dark = false }) {
       )}
       {match.stadium && (
         <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center" sx={{ color: muted }}>
-          <LocationOnOutlinedIcon sx={{ fontSize: 13 }} />
+          <LocationOnOutlined sx={{ fontSize: 13 }} />
           <Typography variant="caption" sx={{ fontWeight: 500, fontSize: "0.7rem" }}>
             {match.stadium}
           </Typography>
@@ -234,7 +236,7 @@ function FooterMeta({ match, broadcasts, dark = false }) {
       )}
       {trim.length > 0 && (
         <Stack direction="row" spacing={0.5} justifyContent="center" alignItems="center" flexWrap="wrap" useFlexGap>
-          <LiveTvOutlinedIcon sx={{ fontSize: 14, color: muted }} />
+          <LiveTvOutlined sx={{ fontSize: 14, color: muted }} />
           {trim.map((b) => (
             <Chip
               key={b.id}

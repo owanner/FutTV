@@ -1,5 +1,5 @@
 import { Card, CardContent, Typography, Stack, Chip, Box } from "@mui/material";
-import SportsSoccerIcon from "@mui/icons-material/SportsSoccer";
+import { SportsSoccer } from "@mui/icons-material";
 
 const EVENT_CONFIG = {
   0: { icon: "\u26BD", label: "Gol", color: "#19AE47" },
@@ -27,7 +27,7 @@ export default function TimeLineCard({ events, colors }) {
     >
       <CardContent sx={{ py: 2, "&:last-child": { pb: 2 } }}>
         <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 2 }}>
-          <SportsSoccerIcon sx={{ fontSize: 18, color: colors?.primary || "primary.main" }} />
+          <SportsSoccer sx={{ fontSize: 18, color: colors?.primary || "primary.main" }} />
           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
             Eventos
           </Typography>

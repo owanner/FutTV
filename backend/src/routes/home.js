@@ -8,7 +8,6 @@
 const express = require("express");
 const router = express.Router();
 const prisma = require("../database/prisma");
-const cache = require("../utils/cache");
 const { competitions } = require("../config/competitions");
 const { competitionFilter } = require("../utils/competitionFilter");
 const {
@@ -18,49 +17,7 @@ const {
   endOfTomorrow
 } = require("../utils/dateHelpers");
 const { STATUS } = require("../utils/matchStatus");
-
-const MATCH_SELECT = {
-  id: true,
-  competitionId: true,
-  seasonId: true,
-  stageId: true,
-  groupId: true,
-  groupName: true,
-  stageName: true,
-  homeTeam: true,
-  homeFlag: true,
-  awayTeam: true,
-  awayFlag: true,
-  homeCode: true,
-  awayCode: true,
-  date: true,
-  round: true,
-  stadium: true,
-  city: true,
-  referee: true,
-  attendance: true,
-  status: true,
-  homeScore: true,
-  awayScore: true,
-  broadcasts: { select: { id: true, name: true, logo: true, url: true, language: true } }
-};
-
-function setCacheHeaders(res, maxAge, sMaxAge) {
-  res.set("Cache-Control", `public, max-age=${maxAge}, s-maxage=${sMaxAge}`);
-}
-
-async function getCachedOrFetch(req, res, fetchFn, ttlMs) {
-  const cacheKey = cache.key(req);
-  const cached = cache.get(cacheKey);
-  if (cached) {
-    res.set("X-Cache", "HIT");
-    return res.json(cached);
-  }
-  const data = await fetchFn();
-  cache.set(cacheKey, data, ttlMs);
-  res.set("X-Cache", "MISS");
-  res.json(data);
-}
+const { MATCH_SELECT, setCacheHeaders, getCachedOrFetch } = require("../utils/routeHelpers");
 
 router.get("/", async (req, res) => {
   try {

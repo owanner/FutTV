@@ -8,23 +8,23 @@
 
 const express = require("express");
 const router = express.Router();
+const prisma = require("../database/prisma");
 const { STATUS } = require("../utils/matchStatus");
+const { getAllCompetitions } = require("../config/competitions");
+const { getStageDisplayName } = require("../utils/stageNames");
 const teamIndexService = require("../services/teamIndexService");
+const { setCacheHeaders } = require("../utils/routeHelpers");
 
-const COMPETITION_INFO = {
-  brasileirao2026: { id: "brasileirao2026", name: "Brasileirão Série A 2026", shortName: "Brasileirão", colors: { primary: "#19AE47", secondary: "#FFDC02", accent: "#193375" } },
-  copadobrasil2026: { id: "copadobrasil2026", name: "Copa do Brasil 2026", shortName: "Copa do Brasil", colors: { primary: "#193375", secondary: "#FFDC02", accent: "#19AE47" } },
-  libertadores2026: { id: "libertadores2026", name: "Copa Libertadores 2026", shortName: "Libertadores", colors: { primary: "#D4AF37", secondary: "#1a1a1a", accent: "#FFFFFF" } },
-  sulamericana2026: { id: "sulamericana2026", name: "Copa Sulamericana 2026", shortName: "Sulamericana", colors: { primary: "#0B1F4F", secondary: "#8A8D91", accent: "#FFFFFF" } },
-  wc2026: { id: "wc2026", name: "Copa do Mundo FIFA 2026", shortName: "Copa 2026", colors: { primary: "#2A398D", secondary: "#3CAC3B", accent: "#E61D25" } },
-};
+// Build competition lookup from canonical config
+const COMPETITION_INFO = Object.fromEntries(
+  getAllCompetitions().map(c => [c.id, c])
+);
 
 /**
  * Annotate a match with competition metadata.
  */
 function annotateMatch(m) {
   const meta = COMPETITION_INFO[m.competitionId] || {};
-  const { getStageDisplayName } = require("../utils/stageNames");
   
   // Fix stage names (e.g., "Repescagem" -> "Oitavas de Final" for Libertadores)
   const displayStageName = getStageDisplayName(m.stageName, m.stageId, m.competitionId);
@@ -88,6 +88,7 @@ function buildTeamInfo(club, standings, allMatches) {
 
 router.get("/", async (req, res) => {
   try {
+    setCacheHeaders(res, 30, 60);
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = req.query.limit
       ? Math.min(300, Math.max(1, parseInt(req.query.limit)))
@@ -150,6 +151,7 @@ router.get("/", async (req, res) => {
 
 router.get("/search", async (req, res) => {
   try {
+    setCacheHeaders(res, 30, 60);
     const query = req.query.q?.trim() || "";
 
     if (!query) {
@@ -202,7 +204,6 @@ router.get("/:code", async (req, res) => {
 
     if (allMatches.length === 0) {
       // Try to find standings for this club
-      const prisma = require("../database/prisma");
       const standings = await prisma.standing.findMany({
         where: { teamCode: code },
       });
@@ -225,7 +226,6 @@ router.get("/:code", async (req, res) => {
       .map(annotateMatch);
 
     // Load standings for this club
-    const prisma = require("../database/prisma");
     const standings = await prisma.standing.findMany({
       where: { teamCode: code },
     });

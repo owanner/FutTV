@@ -16,7 +16,25 @@ export function getStatus(status) {
   return STATUS_MAP[status] || DEFAULT_STATUS;
 }
 
-/** Returns true if the match status indicates a score should be shown (live or finished). */
-export function hasScore(status) {
-  return status === 0 || status === 3;
+/** Shared status filter chips used across Matches, CompetitionDetail, and Clubs pages. */
+export const STATUS_FILTERS = [
+  { value: "", label: "Todos" },
+  { value: "live", label: "Ao vivo", accent: "#DC2626" },
+  { value: "upcoming", label: "Próximos", accent: "#006A67" },
+  { value: "finished", label: "Encerrados", accent: "#475569" }
+];
+
+/**
+ * Split a flat match list into live / upcoming / finished buckets.
+ */
+export function splitByStatus(matches) {
+  const live = [];
+  const upcoming = [];
+  const finished = [];
+  for (const m of matches || []) {
+    if (m.status === 3) live.push(m);
+    else if (m.status === 0) finished.push(m);
+    else if (m.status === 1) upcoming.push(m);
+  }
+  return { live, upcoming, finished };
 }

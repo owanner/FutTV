@@ -1,10 +1,7 @@
 import dayjs from "dayjs";
-import "dayjs/locale/pt-br";
-import { getCompetition } from "../config/competitions";
+import { getCompetition, getAllCompetitions } from "../config/competitions";
 import { normalizeText } from "./formatUtils";
 import { normalizeTeamName } from "./teamUtils";
-
-dayjs.locale("pt-br");
 
 /**
  * Club-page grouping/filtering helpers.
@@ -17,19 +14,7 @@ dayjs.locale("pt-br");
  * the Clubs page support it automatically — no per-page maps to update.
  */
 
-// Shared status filters used across Clubs and CompetitionDetail pages
-export const STATUS_FILTERS = [
-  { value: "", label: "Todos" },
-  { value: "live", label: "Ao vivo", accent: "#DC2626" },
-  { value: "upcoming", label: "Próximos", accent: "#006A67" },
-  { value: "finished", label: "Encerrados", accent: "#475569" },
-];
-
-// Import competitions config once for sorting
-// Using dynamic import to avoid ESM/CJS issues - but since we're in Vite ESM,
-// we can directly import the config
-import competitions from "../config/competitions";
-const { competitions: compList } = competitions;
+const compList = getAllCompetitions();
 
 /**
  * Get competition order index for sorting.
@@ -127,19 +112,4 @@ export function filterClubs(clubs, search = "") {
     const code = normalizeText(club.teamCode || "");
     return name.includes(needle) || code.includes(needle);
   });
-}
-
-/**
- * Split a flat match list into live / upcoming / finished buckets.
- */
-export function splitByStatus(matches) {
-  const live = [];
-  const upcoming = [];
-  const finished = [];
-  for (const m of matches || []) {
-    if (m.status === 3) live.push(m);
-    else if (m.status === 0) finished.push(m);
-    else if (m.status === 1) upcoming.push(m);
-  }
-  return { live, upcoming, finished };
 }

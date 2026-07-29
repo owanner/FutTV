@@ -1,12 +1,9 @@
 import { Box, Card, CardActionArea, CardContent, Stack, Typography, Skeleton, Chip } from "@mui/material";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import { ArrowForward } from "@mui/icons-material";
 import { getAllCompetitions } from "../../config/competitions";
-import useNav from "../../hooks/useNav";
+import { useNav } from "../../hooks/useNav";
 import { useCompetitionsStatus } from "../../hooks/useCompetitionsStatus";
 import dayjs from "dayjs";
-import "dayjs/locale/pt-br";
-
-dayjs.locale("pt-br");
 
 function CompetitionCard({ c, finished = false, lastFinishedDate }) {
   const navigate = useNav();
@@ -56,7 +53,7 @@ function CompetitionCard({ c, finished = false, lastFinishedDate }) {
                   sx={{ height: 22, fontWeight: 700, fontSize: "0.68rem" }}
                 />
               ) : (
-                <ArrowForwardIcon sx={{ color: "text.secondary", mt: 0.5 }} />
+                <ArrowForward sx={{ color: "text.secondary", mt: 0.5 }} />
               )}
             </Stack>
 

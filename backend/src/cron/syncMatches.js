@@ -260,8 +260,8 @@ async function enrichCbfMatchesWithTeamCodes(comp) {
 
   let updated = 0;
   for (const match of matches) {
-    const homeCode = match.homeTeam ? codeLookup.get(match.homeTeam.toLowerCase().trim()) : null;
-    const awayCode = match.awayTeam ? codeLookup.get(match.awayTeam.toLowerCase().trim()) : null;
+    const homeCode = match.homeTeam ? codeLookup.get(normalizeKey(normalizeTeamName(match.homeTeam))) : null;
+    const awayCode = match.awayTeam ? codeLookup.get(normalizeKey(normalizeTeamName(match.awayTeam))) : null;
 
     if (homeCode || awayCode) {
       await prisma.match.update({

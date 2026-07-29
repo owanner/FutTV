@@ -10,10 +10,10 @@
 const express = require("express");
 const router = express.Router();
 const prisma = require("../database/prisma");
-const cache = require("../utils/cache");
 const formatStanding = require("../utils/formatStanding");
 const annotateQualifies = require("../utils/annotateQualifies");
 const { competitionFilter } = require("../utils/competitionFilter");
+const { setCacheHeaders, getCachedOrFetch } = require("../utils/routeHelpers");
 
 const STANDING_SELECT = {
   id: true,
@@ -36,23 +36,6 @@ const STANDING_SELECT = {
   points: true,
   qualifies: true
 };
-
-function setCacheHeaders(res, maxAge, sMaxAge) {
-  res.set("Cache-Control", `public, max-age=${maxAge}, s-maxage=${sMaxAge}`);
-}
-
-async function getCachedOrFetch(req, res, fetchFn, ttlMs) {
-  const cacheKey = cache.key(req);
-  const cached = cache.get(cacheKey);
-  if (cached) {
-    res.set("X-Cache", "HIT");
-    return res.json(cached);
-  }
-  const data = await fetchFn();
-  cache.set(cacheKey, data, ttlMs);
-  res.set("X-Cache", "MISS");
-  res.json(data);
-}
 
 router.get("/", async (req, res) => {
   try {
