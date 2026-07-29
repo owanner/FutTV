@@ -358,14 +358,14 @@ function ClubMatchesGrid({ matches, isLoading }) {
       </Box>
 
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="stretch">
-        <Box sx={{ flex: 1, maxWidth: 480 }}>
+        {/*<Box sx={{ flex: 1, maxWidth: 480 }}>
           <SearchField
             value={matchSearch}
             onChange={(e) => setMatchSearch(e.target.value)}
             onClear={() => setMatchSearch("")}
             placeholder="Buscar partidas..."
           />
-        </Box>
+        </Box>*/}
         <Stack
           direction="row"
           spacing={0.5}
