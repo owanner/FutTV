@@ -7,6 +7,7 @@ import { useCompetition } from "../../contexts/CompetitionContext";
 import { useMatches } from "../../hooks/useMatches";
 import { useBracket } from "../../hooks/useBracket";
 import { getStatus } from "../../utils/statusUtils";
+import { formatMatchDate } from "../../utils/formatUtils";
 import { abbreviateTeamName, normalizeTeamName } from "../../utils/teamUtils";
 import {
   KNOCKOUT_PHASES,
@@ -87,7 +88,7 @@ function BracketMatchCard({ match, navigate, isThirdPlace }) {
         <Stack spacing={1}>
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700, fontSize: "0.65rem" }}>
-              {dayjs(match.date).format("DD/MM · HH:mm")}
+              {formatMatchDate(match.date)} · {dayjs(match.date).format("HH:mm")}
             </Typography>
             {isThirdPlace && (
               <Chip size="small" label="3º lugar" sx={{ height: 18, fontSize: "0.6rem", fontWeight: 700 }} color="warning" />

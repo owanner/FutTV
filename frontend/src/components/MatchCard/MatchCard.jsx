@@ -17,6 +17,7 @@ import {
 import dayjs from "dayjs";
 import { sortBroadcasts } from "../../utils/broadcasts";
 import { getStatus } from "../../utils/statusUtils";
+import { formatMatchDate } from "../../utils/formatUtils";
 import { abbreviateTeamName, normalizeTeamName } from "../../utils/teamUtils";
 import { useNav } from "../../hooks/useNav";
 
@@ -178,7 +179,7 @@ function HeaderBar({ match, status, align = "space-between", dark = false }) {
             fontSize: "0.68rem"
           }}
         >
-          {dayjs(match.date).format("DD MMM")}
+          {formatMatchDate(match.date)}
         </Typography>
         <Chip
           size="small"
@@ -321,7 +322,7 @@ export default function MatchCard({ match, variant = "grid", size, colors, onCli
                 {match.groupName || match.stageName || "Partida"}
               </Typography>
               <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>
-                {dayjs(match.date).format("DD MMM")}
+                {formatMatchDate(match.date)}
               </Typography>
               <Chip
                 label={status.label}
