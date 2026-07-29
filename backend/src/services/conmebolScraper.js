@@ -101,6 +101,12 @@ async function scrapeFixturePage(fixtureId, slug = "libertadores", opts = {}) {
     ? new Date(t.fixture_date * 1000)
     : null;
 
+  // Extract scores from the page
+  const homeScoreEl = $(".m-match-centre-hero__score--home").first().text().trim();
+  const awayScoreEl = $(".m-match-centre-hero__score--away").first().text().trim();
+  const homeScore = homeScoreEl !== "" ? parseInt(homeScoreEl, 10) : null;
+  const awayScore = awayScoreEl !== "" ? parseInt(awayScoreEl, 10) : null;
+
   return {
     conmebolFixtureId: String(fixtureId),
     slug,
@@ -117,7 +123,9 @@ async function scrapeFixturePage(fixtureId, slug = "libertadores", opts = {}) {
     competitionName: t.fixture_competition_title || null,
     tournamentName: t.fixture_tournament_title || null,
     venue: t.relations?.cc_venue_vocab?.[0]?.label || null,
-    broadcasts
+    broadcasts,
+    homeScore: Number.isFinite(homeScore) ? homeScore : null,
+    awayScore: Number.isFinite(awayScore) ? awayScore : null
   };
 }
 

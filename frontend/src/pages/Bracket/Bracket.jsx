@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, Typography, Stack, Box, Chip } from "@mui/material";
-import { EmojiEvents } from "@mui/icons-material";
+import { EmojiEvents, HourglassEmpty } from "@mui/icons-material";
 import dayjs from "dayjs";
 
 import { useCompetition } from "../../contexts/CompetitionContext";
@@ -17,7 +17,10 @@ import {
 import { useNav } from "../../hooks/useNav";
 import { PageLoader, PageError } from "../../components/PageLoader/PageLoader";
 
-function TeamSide({ team, code, flag, score, winner }) {
+function TeamSide({ team, code, flag, score, winner, competitionId }) {
+  const isPlaceholder = !team || team.trim().toLowerCase() === "unknown" || team.trim().toLowerCase() === "a definir";
+  const displayName = isPlaceholder ? "A definir" : normalizeTeamName(team) || abbreviateTeamName(code) || "A definir";
+
   return (
     <Stack
       direction="row"
@@ -38,7 +41,9 @@ function TeamSide({ team, code, flag, score, winner }) {
           overflow: "hidden"
         }}
       >
-        {flag ? (
+        {isPlaceholder ? (
+          <HourglassEmpty sx={{ fontSize: 14, color: "text.disabled" }} />
+        ) : flag ? (
           <Box component="img" src={flag} alt="" sx={{ width: 20, height: 14, objectFit: "contain" }} />
         ) : (
           <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.6rem" }}>?</Typography>
@@ -52,10 +57,12 @@ function TeamSide({ team, code, flag, score, winner }) {
           fontWeight: winner ? 800 : 500,
           whiteSpace: "nowrap",
           overflow: "hidden",
-          textOverflow: "ellipsis"
+          textOverflow: "ellipsis",
+          color: isPlaceholder ? "text.secondary" : "text.primary",
+          fontStyle: isPlaceholder ? "italic" : "normal"
         }}
       >
-        {normalizeTeamName(team) || abbreviateTeamName(code) || "A definir"}
+        {displayName}
       </Typography>
       {score != null && (
         <Typography variant="body2" sx={{ fontWeight: 800, flexShrink: 0 }}>
@@ -66,7 +73,7 @@ function TeamSide({ team, code, flag, score, winner }) {
   );
 }
 
-function BracketMatchCard({ match, navigate, isThirdPlace }) {
+function BracketMatchCard({ match, navigate, isThirdPlace, competitionId }) {
   const status = getStatus(match.status);
   const showScore = match.status === 0 || match.status === 3;
   const homeScore = showScore ? match.homeScore ?? 0 : null;
@@ -100,8 +107,8 @@ function BracketMatchCard({ match, navigate, isThirdPlace }) {
             />
           </Stack>
           <Stack spacing={0.5}>
-            <TeamSide team={match.homeTeam} code={match.homeCode} flag={match.homeFlag} score={homeScore} winner={decided ? homeWins : null} />
-            <TeamSide team={match.awayTeam} code={match.awayCode} flag={match.awayFlag} score={awayScore} winner={decided ? awayWins : null} />
+            <TeamSide team={match.homeTeam} code={match.homeCode} flag={match.homeFlag} score={homeScore} winner={decided ? homeWins : null} competitionId={competitionId} />
+            <TeamSide team={match.awayTeam} code={match.awayCode} flag={match.awayFlag} score={awayScore} winner={decided ? awayWins : null} competitionId={competitionId} />
           </Stack>
         </Stack>
       </CardContent>
@@ -112,10 +119,14 @@ function BracketMatchCard({ match, navigate, isThirdPlace }) {
 function hasRealTeams(match) {
   const home = (match.homeTeam || "").trim();
   const away = (match.awayTeam || "").trim();
-  return home.length > 0 && away.length > 0;
+  if (home.length === 0 && away.length === 0) return false;
+  if (home.length === 0 || away.length === 0) return false;
+  const bothPlaceholder = ["unknown", "a definir"];
+  if (bothPlaceholder.includes(home.toLowerCase()) && bothPlaceholder.includes(away.toLowerCase())) return false;
+  return true;
 }
 
-function PhaseBlock({ phase, matches, navigate }) {
+function PhaseBlock({ phase, matches, navigate, competitionId }) {
   const isThirdPlace = phase.key === "THIRD_PLACE";
   const sortedMatches = [...matches].sort((a, b) => new Date(a.date) - new Date(b.date));
   return (
@@ -138,13 +149,8 @@ function PhaseBlock({ phase, matches, navigate }) {
         }}
       >
         {sortedMatches.map((m) => (
-          <BracketMatchCard key={m.id} match={m} navigate={navigate} isThirdPlace={isThirdPlace} />
+          <BracketMatchCard key={m.id} match={m} navigate={navigate} isThirdPlace={isThirdPlace} competitionId={competitionId} />
         ))}
-        {sortedMatches.length === 0 && (
-          <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
-            Confrontos a definir.
-          </Typography>
-        )}
       </Box>
     </Box>
   );
@@ -246,11 +252,12 @@ export default function Bracket({ competitionId: overrideId }) {
         />
         {phases.map((phase, index) => {
           const rawCount = realByPhase?.[phase.key]?.length || 0;
-          const count = index > activePhaseIndex ? 0 : rawCount;
+          const visible = index <= activePhaseIndex && rawCount > 0;
+          if (!visible) return null;
           return (
             <Chip
               key={phase.key}
-              label={`${phase.label} · ${count}/${phase.matchCount}`}
+              label={`${phase.label} · ${rawCount}/${phase.matchCount}`}
               onClick={() => setSelectedPhase(phase.key)}
               variant={selectedPhase === phase.key ? "filled" : "outlined"}
               sx={{ fontWeight: 700, flexShrink: 0, ...(selectedPhase === phase.key ? { bgcolor: "primary.main", color: "#fff" } : {}) }}
@@ -260,13 +267,19 @@ export default function Bracket({ competitionId: overrideId }) {
       </Box>
 
       {phases
-        .filter((phase) => selectedPhase === "ALL" || selectedPhase === phase.key)
-        .map((phase, index) => (
+        .filter((phase) => {
+          if (selectedPhase !== "ALL" && selectedPhase !== phase.key) return false;
+          const matches = realByPhase?.[phase.key] || [];
+          if (matches.length === 0) return false;
+          return true;
+        })
+        .map((phase) => (
           <PhaseBlock
             key={phase.key}
             phase={phase}
-            matches={index > activePhaseIndex ? [] : (realByPhase?.[phase.key] || [])}
+            matches={realByPhase?.[phase.key] || []}
             navigate={navigate}
+            competitionId={competitionId}
           />
         ))}
     </Stack>

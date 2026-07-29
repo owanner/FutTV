@@ -461,10 +461,10 @@ async function syncConmebolCompetition(comp) {
       groupId: null,
       groupName: null,
       stageName: conmebolScraper.normaliseStage(f.stageName, comp.id),
-      homeTeam: f.homeTeam,
-      homeFlag: f.homeCrest || null,
-      awayTeam: f.awayTeam,
-      awayFlag: f.awayCrest || null,
+      homeTeam: f.homeTeam === "Unknown" ? "A definir" : f.homeTeam,
+      homeFlag: f.homeTeam === "Unknown" ? null : (f.homeCrest || null),
+      awayTeam: f.awayTeam === "Unknown" ? "A definir" : f.awayTeam,
+      awayFlag: f.awayTeam === "Unknown" ? null : (f.awayCrest || null),
       homeCode: null,
       awayCode: null,
       date: f.fixtureDate,
@@ -474,8 +474,8 @@ async function syncConmebolCompetition(comp) {
       referee: null,
       attendance: null,
       status,
-      homeScore: null, // CONMEBOL pages don't expose scores
-      awayScore: null
+      homeScore: f.homeScore ?? null,
+      awayScore: f.awayScore ?? null
     };
 
     await prisma.match.upsert({
