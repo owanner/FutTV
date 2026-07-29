@@ -11,6 +11,7 @@ const Matches = lazy(() => import("../pages/Matches/Matches"));
 const Standings = lazy(() => import("../pages/Standings/Standings"));
 const Bracket = lazy(() => import("../pages/Bracket/Bracket"));
 const MatchDetails = lazy(() => import("../pages/MatchDetails/MatchDetails"));
+const Clubs = lazy(() => import("../pages/Clubs/Clubs"));
 const NotFound = lazy(() => import("../pages/NotFound/NotFound"));
 
 function withSuspense(Component) {
@@ -30,6 +31,7 @@ export default function AppRoutes() {
         <Route path="/" element={withSuspense(Home)} />
         <Route path="/competitions" element={withSuspense(Competitions)} />
         <Route path="/competitions/:id" element={withSuspense(CompetitionDetail)} />
+        <Route path="/clubes" element={withSuspense(Clubs)} />
         <Route path="/matches" element={withSuspense(Matches)} />
         <Route path="/standings" element={withSuspense(Standings)} />
         <Route path="/bracket" element={withSuspense(Bracket)} />

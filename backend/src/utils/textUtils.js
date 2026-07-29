@@ -41,21 +41,60 @@ function teamMatchKey(name) {
 }
 
 /**
- * Verifica se dois nomes de time provavelmente se referem ao mesmo clube,
- * comparando suas palavras significativas comuns (>= 4 chars).
- * Retorna true se houver ao menos uma palavra longa em comum.
+ * Extrai todas as palavras de um nome (sem filtrar por comprimento ou tokens jurídicos).
+ * Usado para verificação de substring completa.
+ */
+function getAllWords(name) {
+  if (!name) return new Set();
+  const norm = normalizeText(name);
+  return new Set(norm.split(" ").filter(Boolean));
+}
+
+/**
+ * Verifica se dois nomes de time provavelmente se referem ao mesmo clube.
+ * Regra: dois times são considerados iguais se:
+ * 1. Os nomes normalizados são idênticos, OU
+ * 2. Um nome é substring do outro (ex: "Flamengo" em "CR Flamengo") E
+ *    eles compartilham pelo menos uma palavra significativa, OU
+ * 3. Eles compartilham pelo menos uma palavra significativa (>= 4 chars).
+ * 
+ * Isso evita falsos positivos como "Santos" matching com "Independente Santa Fe"
+ * porque "santos" não compartilha uma palavra significativa (>=4) com "santa fe".
  */
 function isSameTeam(teamA, teamB) {
   if (!teamA || !teamB) return false;
+  
   const a = normalizeText(teamA);
   const b = normalizeText(teamB);
+  
+  // Nomes idênticos
   if (a === b) return true;
-  if (a.includes(b) || b.includes(a)) return true;
+  
   const kA = teamMatchKey(teamA);
   const kB = teamMatchKey(teamB);
-  if (!kA.size || !kB.size) return false;
-  for (const w of kA) if (kB.has(w)) return true;
+  
+  // Compartilham pelo menos uma palavra significativa
+  if (kA.size > 0 && kB.size > 0) {
+    for (const w of kA) {
+      if (kB.has(w)) return true;
+    }
+  }
+  
+  // Um nome é substring do outro e compartilham palavras
+  // Ex: "Flamengo" em "Club de Regatas do Flamengo"
+  if (a.includes(b) || b.includes(a)) {
+    const wordsA = getAllWords(teamA);
+    const wordsB = getAllWords(teamB);
+    // Verificar se compartilham pelo menos uma palavra de 4+ caracteres
+    for (const w of wordsA) {
+      if (w.length >= 4 && wordsB.has(w)) return true;
+    }
+    for (const w of wordsB) {
+      if (w.length >= 4 && wordsA.has(w)) return true;
+    }
+  }
+  
   return false;
 }
 
-module.exports = { normalizeText, teamMatchKey, isSameTeam };
+module.exports = { normalizeText, teamMatchKey, isSameTeam, getAllWords };

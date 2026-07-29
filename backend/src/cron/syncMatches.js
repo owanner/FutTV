@@ -10,6 +10,7 @@ const cbfApi = require("../services/cbfApi");
 const conmebolScraper = require("../services/conmebolScraper");
 const { competitions } = require("../config/competitions");
 const { isSameTeam } = require("../utils/textUtils");
+const aliases = require("../../data/teamAliases.json");
 
 function extractReferee(match) {
   if (!match.Officials || match.Officials.length === 0) return null;
@@ -179,6 +180,102 @@ async function syncFootballDataCompetition(comp) {
     });
   }
 }
+ 
+function normalizeKey(s) {
+  if (!s) return "";
+  return s
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function normalizeTeamName(raw) {
+  if (!raw) return "";
+  const key = normalizeKey(raw);
+  if (!key) return String(raw);
+  const direct = aliases[key];
+  if (direct) return direct;
+
+  const COMMON_PREFIXES = [
+    "SE", "SC", "SA", "SP", "EC", "AC", "AA", "CR", "CS", "CA", "CD", "CAR",
+    "CDP", "CT", "CE", "CAP"
+  ];
+  const COMMON_SUFFIXES = [
+    "S.A.F.", "SAF", "F.C.", "FC", "Futebol Clube", "Esporte Clube",
+    "Clube de Futebol", "Atletico Clube", "Atlético Clube"
+  ];
+
+  let n = raw.trim().replace(/\s+/g, " ");
+  const firstWordRaw = n.split(" ")[0] || "";
+  const firstWord = firstWordRaw.replace(/\./g, "");
+  if (COMMON_PREFIXES.includes(firstWord.toUpperCase())) {
+    n = n.slice(firstWordRaw.length).trim();
+  }
+  for (const suf of COMMON_SUFFIXES) {
+    const re = new RegExp(`${suf.replace(/\./g, "\\.")}$`, "i");
+    if (re.test(n)) {
+      n = n.replace(re, "").trim();
+      break;
+    }
+  }
+  return n;
+}
+
+/**
+ * Build a lookup map of normalized team name -> teamCode from standings for a competition.
+ * Uses the same normalization logic as the frontend for consistent matching.
+ */
+async function buildTeamCodeLookup(compId) {
+  const standings = await prisma.standing.findMany({
+    where: { competitionId: compId },
+    select: { teamName: true, teamCode: true }
+  });
+
+  const lookup = new Map();
+  for (const s of standings) {
+    if (s.teamCode && s.teamName) {
+      const normalized = normalizeTeamName(s.teamName);
+      const key = normalizeKey(normalized);
+      lookup.set(key, s.teamCode);
+    }
+  }
+  return lookup;
+}
+
+/**
+ * Enrich CBF matches with team codes by matching team names against standings.
+ * This is needed because CBF API doesn't provide team abbreviations (TLA).
+ */
+async function enrichCbfMatchesWithTeamCodes(comp) {
+  const codeLookup = await buildTeamCodeLookup(comp.id);
+  if (codeLookup.size === 0) return;
+
+  const matches = await prisma.match.findMany({
+    where: { competitionId: comp.id, OR: [{ homeCode: null }, { awayCode: null }] },
+    select: { id: true, homeTeam: true, awayTeam: true }
+  });
+
+  let updated = 0;
+  for (const match of matches) {
+    const homeCode = match.homeTeam ? codeLookup.get(match.homeTeam.toLowerCase().trim()) : null;
+    const awayCode = match.awayTeam ? codeLookup.get(match.awayTeam.toLowerCase().trim()) : null;
+
+    if (homeCode || awayCode) {
+      await prisma.match.update({
+        where: { id: match.id },
+        data: {
+          homeCode: homeCode || match.homeCode,
+          awayCode: awayCode || match.awayCode
+        }
+      });
+      updated++;
+    }
+  }
+  if (updated > 0) console.log(`  🏷️ ${updated} partidas enriquecidas com códigos de time`);
+}
 
 /**
  * Enrich CBF matches with live scores + status from football-data.org.
@@ -300,6 +397,9 @@ async function syncCbfCompetition(comp) {
       create: { id: matchId, ...matchData }
     });
   }
+
+  // Enrich CBF matches with team codes from standings
+  await enrichCbfMatchesWithTeamCodes(comp);
 
   // Update scores and status from football-data.org (CBF returns 0 for all goals)
   await enrichCbfScoresFromFootballData(comp, matches);

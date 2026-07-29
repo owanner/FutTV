@@ -7,6 +7,7 @@ import {
 import {
   Home,
   SportsSoccer,
+  ShieldOutlined,
 } from "@mui/icons-material";
 
 import { useLocation } from "react-router-dom";
@@ -46,6 +47,11 @@ export default function BottomNav() {
           value="/competitions"
           label="Competições"
           icon={<SportsSoccer />}
+        />
+        <BottomNavigationAction
+          value="/clubes"
+          label="Clubes"
+          icon={<ShieldOutlined />}
         />
       </BottomNavigation>
     </Paper>

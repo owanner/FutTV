@@ -25,6 +25,7 @@ const searchRoutes = require("./routes/search");
 const teamsRoutes = require("./routes/teams");
 const homeRoutes = require("./routes/home");
 const groupRoutes = require("./routes/group");
+const clubsRoutes = require("./routes/clubs");
 
 const app = express();
 
@@ -87,6 +88,7 @@ app.use("/bracket", bracketRoutes);
 app.use("/search", searchRoutes);
 app.use("/teams", teamsRoutes);
 app.use("/group", groupRoutes);
+app.use("/clubs", clubsRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: "Rota não encontrada" });

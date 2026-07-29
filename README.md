@@ -52,6 +52,18 @@ Fut-TV provides football fans with a clean, responsive experience for following 
 * Broadcast channel icons and names
 * Sorted by channel priority
 
+### Clubs
+
+* Dedicated **Clubes** page accessible from the bottom navigation bar (using a crest/badge icon)
+* Multi-source team resolution matching clubs by code and team name normalization across all competitions
+* Real-time search bar to filter clubs by name or acronym
+* Filtered to display all clubs assigned to a competition with upcoming or live matches
+* Club list prioritized by competition importance (Brasileirão, Copa do Brasil, Libertadores, Sulamericana, Copa 2026)
+* Equal-height responsive grid layout (1, 2, 3, or 4 cards per row) with club badges, competition chips, and upcoming match badges
+* Expandable club view displaying **all matches across every competition** the team participates in
+* Grouping toggle (by Competition or by Date) with match-level search bar and status filters (Ao Vivo, Próximos, Encerrados)
+* In-memory query caching (`useClubs` / `useClub`) for scalable client performance
+
 ### Responsive Design
 
 * Mobile-first experience
@@ -82,7 +94,7 @@ Fut-TV provides football fans with a clean, responsive experience for following 
 ### Data Sources
 
 | Source | Used For |
-|---|---|---|
+|---|---|
 | CBF API | Brasileirão & Copa do Brasil match data |
 | football-data.org | Brasileirão & Libertadores matches + official standings |
 | FIFA API | Copa 2026 matches, standings, and bracket data |
@@ -193,6 +205,7 @@ Fut-TV is a fully functional PWA — it can be installed on mobile devices and d
 * [x] Libertadores support (football-data.org)
 * [x] Copa 2026 support (FIFA)
 * [x] PWA support
+* [x] **Clubes page with search, prioritized list, badges, load-more, and match expansion**
 * [ ] Top scorers
 * [ ] Team statistics and form guide
 * [ ] Push notifications for live matches
