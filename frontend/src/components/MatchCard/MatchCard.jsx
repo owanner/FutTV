@@ -14,6 +14,7 @@ import {
   LiveTvOutlined
 } from "@mui/icons-material";
 
+import { useMemo } from "react";
 import dayjs from "dayjs";
 import { sortBroadcasts } from "../../utils/broadcasts";
 import { getStatus } from "../../utils/statusUtils";
@@ -32,6 +33,8 @@ function TeamBlock({ flag, name, code, size = "md", dark = false, onClick }) {
     md: { box: [56, 42], img: [44, 34], name: "0.85rem" },
     lg: { box: [72, 54], img: [56, 42], name: "0.95rem" }
   }[size];
+
+  const displayName = useMemo(() => abbreviateTeamName(normalizeTeamName(name)), [name]);
 
   const handleTeamClick = (e) => {
     e?.stopPropagation?.();
@@ -92,7 +95,7 @@ function TeamBlock({ flag, name, code, size = "md", dark = false, onClick }) {
           "&:hover": dark ? {} : { color: code ? "primary.main" : "inherit" }
         }}
       >
-        {abbreviateTeamName(normalizeTeamName(name))}
+        {displayName}
       </Typography>
     </Stack>
   );

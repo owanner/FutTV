@@ -304,7 +304,53 @@ async function buildTeamIndex() {
       ...club,
       competitions: Array.from(club.competitions),
       aliases: Array.from(club.aliases),
+      upcomingCount: 0,
+      liveCount: 0,
     });
+  }
+
+  // 8. Compute upcomingCount / liveCount per club (baked into cache)
+  const [upcomingMatches, liveMatches] = await Promise.all([
+    prisma.match.findMany({
+      where: { status: STATUS.SCHEDULED, date: { gte: now } },
+      select: { homeTeam: true, awayTeam: true, homeCode: true, awayCode: true },
+    }),
+    prisma.match.findMany({
+      where: { status: STATUS.LIVE },
+      select: { homeTeam: true, awayTeam: true, homeCode: true, awayCode: true },
+    }),
+  ]);
+
+  const resolveClubKey = (code, name) => {
+    if (code) {
+      const upperCode = code.toUpperCase();
+      const key = codeToKey.get(upperCode);
+      if (key && clubs.has(key)) return key;
+    }
+    if (name) {
+      const norm = normalizeText(name);
+      const key = aliasToKey.get(norm);
+      if (key && clubs.has(key)) return key;
+      for (const [k, club] of clubs.entries()) {
+        if (isSameTeam(club.teamName, name) || club.aliases.some(a => isSameTeam(a, name))) {
+          return k;
+        }
+      }
+    }
+    return null;
+  };
+
+  for (const m of upcomingMatches) {
+    const homeKey = resolveClubKey(m.homeCode, m.homeTeam);
+    const awayKey = resolveClubKey(m.awayCode, m.awayTeam);
+    if (homeKey) clubs.get(homeKey).upcomingCount++;
+    if (awayKey) clubs.get(awayKey).upcomingCount++;
+  }
+  for (const m of liveMatches) {
+    const homeKey = resolveClubKey(m.homeCode, m.homeTeam);
+    const awayKey = resolveClubKey(m.awayCode, m.awayTeam);
+    if (homeKey) clubs.get(homeKey).liveCount++;
+    if (awayKey) clubs.get(awayKey).liveCount++;
   }
 
   return {
@@ -390,93 +436,15 @@ async function resolveTeam(codeOrName) {
 
 /**
  * Get all clubs that have upcoming or live matches.
+ * Uses counts baked into the team index cache — no extra DB queries.
  */
 async function getActiveClubs() {
   const index = await getTeamIndex();
-  const now = new Date();
-
-  const [upcomingMatches, liveMatches] = await Promise.all([
-    prisma.match.findMany({
-      where: {
-        status: STATUS.SCHEDULED,
-        date: { gte: now },
-      },
-      select: {
-        competitionId: true,
-        homeCode: true,
-        awayCode: true,
-        homeTeam: true,
-        awayTeam: true,
-      },
-    }),
-    prisma.match.findMany({
-      where: {
-        status: STATUS.LIVE,
-      },
-      select: {
-        competitionId: true,
-        homeCode: true,
-        awayCode: true,
-        homeTeam: true,
-        awayTeam: true,
-      },
-    }),
-  ]);
-
-  const upcomingCounts = new Map();
-  const liveCounts = new Map();
-
-  const resolveSide = (code, name) => {
-    if (code) {
-      const upperCode = code.toUpperCase();
-      const key = index.codeToKey.get(upperCode);
-      if (key) {
-        // Verify the name matches
-        const club = index.clubs.get(key);
-        if (club && (isSameTeam(club.teamName, name) || club.aliases.some(a => isSameTeam(a, name)))) {
-          return key;
-        }
-      }
-    }
-    if (name) {
-      const norm = normalizeText(name);
-      const key = index.aliasToKey.get(norm);
-      if (key) return key;
-      for (const [k, club] of index.clubs.entries()) {
-        if (isSameTeam(club.teamName, name) || club.aliases.some(a => isSameTeam(a, name))) {
-          return k;
-        }
-      }
-    }
-    return null;
-  };
-
-  for (const m of upcomingMatches) {
-    for (const side of ["home", "away"]) {
-      const code = side === "home" ? m.homeCode : m.awayCode;
-      const name = side === "home" ? m.homeTeam : m.awayTeam;
-      const key = resolveSide(code, name);
-      if (key) {
-        upcomingCounts.set(key, (upcomingCounts.get(key) || 0) + 1);
-      }
-    }
-  }
-
-  for (const m of liveMatches) {
-    for (const side of ["home", "away"]) {
-      const code = side === "home" ? m.homeCode : m.awayCode;
-      const name = side === "home" ? m.homeTeam : m.awayTeam;
-      const key = resolveSide(code, name);
-      if (key) {
-        liveCounts.set(key, (liveCounts.get(key) || 0) + 1);
-      }
-    }
-  }
 
   const result = [];
   for (const [key, club] of index.clubs.entries()) {
-    const upcomingCount = upcomingCounts.get(key) || 0;
-    const liveCount = liveCounts.get(key) || 0;
+    const upcomingCount = club.upcomingCount || 0;
+    const liveCount = club.liveCount || 0;
 
     if (upcomingCount > 0 || liveCount > 0) {
       result.push({
@@ -543,7 +511,14 @@ async function getClubMatches(clubKey) {
   const club = index.clubs.get(clubKey);
   if (!club) return [];
 
+  // Filter by the club's competitions to avoid loading ALL matches from the DB
+  const competitionIds = club.competitions;
+  if (!competitionIds || competitionIds.length === 0) return [];
+
   const allMatches = await prisma.match.findMany({
+    where: {
+      competitionId: { in: competitionIds },
+    },
     select: {
       id: true,
       competitionId: true,
