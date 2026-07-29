@@ -18,6 +18,7 @@ export function normalizeText(text) {
 
 /**
  * Smart date label for match cards.
+ * - Day before → "Ontem"
  * - Same day → "Hoje"
  * - Tomorrow → "Amanhã"
  * - Same week (Mon–Sun) → day name (e.g. "Sexta")
@@ -27,6 +28,7 @@ export function formatMatchDate(date) {
   const d = dayjs(date);
   const now = dayjs();
 
+  if (d.isSame(now.subtract(1, "day"), "day")) return "ontem";
   if (d.isSame(now, "day")) return "hoje";
   if (d.isSame(now.add(1, "day"), "day")) return "amanhã";
 
