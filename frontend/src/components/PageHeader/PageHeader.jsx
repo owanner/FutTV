@@ -16,17 +16,19 @@ export default function PageHeader({ title, colors, filters, children }) {
 
   return (
     <Stack spacing={2} sx={{ mb: 2 }}>
-      {/* Accent bar */}
-      <Box
-        sx={{
-          height: 4,
-          borderRadius: 2,
-          background: colors?.primary && colors?.secondary
-            ? `linear-gradient(90deg, ${colors.primary}, ${colors.secondary})`
-            : accent,
-          mb: 0.5
-        }}
-      />
+      {/* Accent bar — only shown when competition colors are provided */}
+      {colors?.primary && (
+        <Box
+          sx={{
+            height: 4,
+            borderRadius: 2,
+            background: colors?.secondary
+              ? `linear-gradient(90deg, ${colors.primary}, ${colors.secondary})`
+              : colors.primary,
+            mb: 0.5
+          }}
+        />
+      )}
 
       {/* Title */}
       <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: -0.5 }}>
