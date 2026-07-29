@@ -22,7 +22,7 @@ const cron = require("node-cron");
 const prisma = require("../database/prisma");
 const { competitions } = require("../config/competitions");
 const { STATUS } = require("../utils/matchStatus");
-const { syncCompetition, refreshLiveScores } = require("./syncMatches");
+const { syncCompetition, refreshLiveScores, refreshRecentFinishedScores } = require("./syncMatches");
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
@@ -120,6 +120,26 @@ async function tickCompetition(comp) {
         await refreshLiveScores(compId);
       }
       return;
+    }
+
+    // 1c) Recently finished CONMEBOL matches may have 0x0 scores (scraper
+    //     doesn't expose scores, live window may have been missed). Correct
+    //     them every 15 minutes for up to 6 hours after kickoff.
+    if (comp.apiProvider === "conmebol") {
+      const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
+      const recentFinished = await prisma.match.count({
+        where: {
+          competitionId: compId,
+          status: 0,
+          homeScore: 0,
+          awayScore: 0,
+          date: { gte: sixHoursAgo }
+        }
+      });
+      if (recentFinished > 0 && shouldRun(compId, 15 * MINUTE, "recent-finished")) {
+        console.log(`⏱ [${comp.shortName || comp.name}] RECENT-FINISHED — correcting ${recentFinished} scores`);
+        await refreshRecentFinishedScores(compId);
+      }
     }
 
     // 2) No live match -> base cadence on next upcoming match.

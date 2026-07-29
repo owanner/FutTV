@@ -633,7 +633,56 @@ async function syncMatches() {
   console.log("\n✅ Sincronização de jogos concluída\n");
 }
 
+/**
+ * Refresh scores for recently finished matches that may have 0x0 in the DB.
+ * This handles the case where a CONMEBOL match finished but its scores were
+ * never updated (scraper doesn't expose scores, and the live refresh window
+ * may have been missed).
+ */
+async function refreshRecentFinishedScores(compId) {
+  const comp = competitions.find((c) => c.id === compId);
+  if (!comp || comp.apiProvider !== "conmebol") return;
+
+  try {
+    const scores = await apiFootball.getLiveScores(compId, comp.config.footballDataSeason || "2026");
+    if (scores.length === 0) return;
+
+    let updated = 0;
+    for (const ls of scores) {
+      // Only update matches that are FINISHED but have 0x0 (likely wrong)
+      const matches = await prisma.match.findMany({
+        where: {
+          competitionId: compId,
+          status: 0,
+          homeScore: 0,
+          awayScore: 0,
+          OR: [
+            { homeTeam: ls.homeTeam },
+            { awayTeam: ls.awayTeam }
+          ]
+        },
+        select: { id: true, homeTeam: true, awayTeam: true, manuallyAdjusted: true }
+      });
+      for (const m of matches) {
+        if (m.manuallyAdjusted) continue;
+        if (!isSameTeam(m.homeTeam, ls.homeTeam) || !isSameTeam(m.awayTeam, ls.awayTeam)) continue;
+        if (ls.homeGoals == null || ls.awayGoals == null) continue;
+
+        await prisma.match.update({
+          where: { id: m.id },
+          data: { homeScore: ls.homeGoals, awayScore: ls.awayGoals }
+        });
+        updated++;
+      }
+    }
+    if (updated > 0) console.log(`  📊 ${updated} placares de jogos encerrados corrigidos via apiFootball`);
+  } catch (error) {
+    console.error(`  ⚠ Erro ao corrigir placares recentes: ${error.message}`);
+  }
+}
+
 module.exports = syncMatches;
 module.exports.syncCompetition = syncCompetition;
 module.exports.refreshLiveScores = refreshLiveScores;
+module.exports.refreshRecentFinishedScores = refreshRecentFinishedScores;
 module.exports.enrichCbfScoresFromFootballData = enrichCbfScoresFromFootballData;

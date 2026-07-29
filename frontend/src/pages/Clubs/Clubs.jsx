@@ -61,7 +61,7 @@ function ClubCard({ club, expanded, onToggleExpand, upcomingCount, liveCount }) 
       }}
     >
       <CardActionArea onClick={onToggleExpand} sx={{ p: 0, display: "flex", flexDirection: "column", alignItems: "stretch" }}>
-        <CardContent sx={{ p: 2, display: "flex", flexDirection: "row", alignItems: "center", gap: 2 }}>
+        <CardContent sx={{ p: 2, display: "flex", flexDirection: "row", alignItems: { xs: "flex-start", sm: "center" }, gap: 2 }}>
           <Tooltip title={normalizeTeamName(club.teamName)}>
             <Box
               sx={{
@@ -366,15 +366,28 @@ function ClubMatchesGrid({ matches, isLoading }) {
             placeholder="Buscar partidas..."
           />
         </Box>
-        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", alignItems: "center" }}>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{
+            flexWrap: { xs: "nowrap", sm: "wrap" },
+            overflowX: { xs: "auto", sm: "visible" },
+            pb: { xs: 0.5, sm: 0 },
+            alignItems: "center",
+          }}
+        >
           {STATUS_FILTERS.map((opt) => (
             <Chip
               key={opt.value}
               label={opt.label}
+              size="small"
               onClick={() => setMatchStatus(opt.value === matchStatus ? "" : opt.value)}
               variant={matchStatus === opt.value ? "filled" : "outlined"}
               sx={{
                 fontWeight: 700,
+                fontSize: { xs: "0.7rem", sm: "0.8125rem" },
+                height: { xs: 28, sm: 32 },
+                flexShrink: 0,
                 ...(matchStatus === opt.value && opt.accent
                   ? { bgcolor: opt.accent, color: "#fff", borderColor: opt.accent }
                   : matchStatus === opt.value

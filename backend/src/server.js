@@ -11,6 +11,7 @@ const cron = require("node-cron");
 const prisma = require("./database/prisma");
 
 const syncMatches = require("./cron/syncMatches");
+const { refreshRecentFinishedScores } = require("./cron/syncMatches");
 const { startMatchScheduler } = require("./cron/matchScheduler");
 const syncStandings = require("./cron/syncStandings");
 const syncLibertadoresBroadcasts = require("./cron/syncLibertadoresBroadcasts");
@@ -66,6 +67,9 @@ guardedSyncStandings();
 guardedSyncLibertadoresBroadcasts();
 guardedSyncBrasileiraoBroadcasts();
 guardedSyncCopaDoBrasilBroadcasts();
+
+// Fix any Sulamericana matches stuck at 0x0 after boot
+refreshRecentFinishedScores("sulamericana2026").catch(() => {});
 
 // DB-driven match scheduler — replaces the old `*/5` cron for matches.
 // Per-competition: 1 min while LIVE, 10 min <2h, hourly <24h, 2x/day <=5d, daily otherwise.
