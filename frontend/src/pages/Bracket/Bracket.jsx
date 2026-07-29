@@ -119,10 +119,9 @@ function BracketMatchCard({ match, navigate, isThirdPlace, competitionId }) {
 function hasRealTeams(match) {
   const home = (match.homeTeam || "").trim();
   const away = (match.awayTeam || "").trim();
-  if (home.length === 0 && away.length === 0) return false;
   if (home.length === 0 || away.length === 0) return false;
-  const bothPlaceholder = ["unknown", "a definir"];
-  if (bothPlaceholder.includes(home.toLowerCase()) && bothPlaceholder.includes(away.toLowerCase())) return false;
+  const placeholder = ["unknown", "a definir"];
+  if (placeholder.includes(home.toLowerCase()) && placeholder.includes(away.toLowerCase())) return false;
   return true;
 }
 
@@ -151,6 +150,11 @@ function PhaseBlock({ phase, matches, navigate, competitionId }) {
         {sortedMatches.map((m) => (
           <BracketMatchCard key={m.id} match={m} navigate={navigate} isThirdPlace={isThirdPlace} competitionId={competitionId} />
         ))}
+        {sortedMatches.length === 0 && (
+          <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+            Confrontos a definir.
+          </Typography>
+        )}
       </Box>
     </Box>
   );
@@ -183,16 +187,6 @@ export default function Bracket({ competitionId: overrideId }) {
     return result;
   }, [byPhase]);
 
-  const activePhaseIndex = useMemo(() => {
-    if (!phases || !realByPhase) return 0;
-    for (let i = 0; i < phases.length; i++) {
-      const matches = realByPhase[phases[i].key] || [];
-      const allCompleted = matches.length > 0 && matches.every(m => m.status === 0);
-      if (!allCompleted) return i;
-    }
-    return phases.length;
-  }, [phases, realByPhase]);
-
   if (matchesQuery.isLoading) return <PageLoader />;
   if (matchesQuery.error) return <PageError message="Erro ao carregar fase eliminatória" />;
   if (!phases) {
@@ -210,9 +204,9 @@ export default function Bracket({ competitionId: overrideId }) {
     );
   }
 
-  const totalDecided = phases.reduce((acc, phase, index) => {
+  const totalDecided = phases.reduce((acc, phase) => {
     const list = realByPhase?.[phase.key] || [];
-    return acc + (index > activePhaseIndex ? 0 : list.length);
+    return acc + list.length;
   }, 0);
 
   return (
@@ -252,8 +246,6 @@ export default function Bracket({ competitionId: overrideId }) {
         />
         {phases.map((phase, index) => {
           const rawCount = realByPhase?.[phase.key]?.length || 0;
-          const visible = index <= activePhaseIndex && rawCount > 0;
-          if (!visible) return null;
           return (
             <Chip
               key={phase.key}
@@ -267,12 +259,7 @@ export default function Bracket({ competitionId: overrideId }) {
       </Box>
 
       {phases
-        .filter((phase) => {
-          if (selectedPhase !== "ALL" && selectedPhase !== phase.key) return false;
-          const matches = realByPhase?.[phase.key] || [];
-          if (matches.length === 0) return false;
-          return true;
-        })
+        .filter((phase) => selectedPhase === "ALL" || selectedPhase === phase.key)
         .map((phase) => (
           <PhaseBlock
             key={phase.key}
