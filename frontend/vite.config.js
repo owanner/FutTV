@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["soccer-ball.png"],
       manifest: {
-        name: "Fut-TV",
-        short_name: "FutTV",
-        description: "Brasileirão, Libertadores e Copa do Mundo 2026",
+        name: "Cadê meu time?",
+        short_name: "CMT",
+        description: "Brasileirão, Libertadores, Copa do Brasil e Sulamericana: onde assistir, placar ao vivo e classificações.",
         theme_color: "#111827",
         background_color: "#FFFFFF",
         display: "standalone",
