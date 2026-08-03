@@ -291,6 +291,81 @@ async function enrichCbfMatchesWithTeamCodes(comp) {
 }
 
 /**
+ * Enrich CBF matches (Copa do Brasil) with scores + status from apiFootball.
+ * Copa do Brasil has no football-data.org integration, so we use apiFootball
+ * as the source of truth for scores and live/final status.
+ *
+ * Accepts an optional `cbfMatches` payload (from CBF API); if not provided,
+ * it falls back to using live/recent matches already in the DB.
+ */
+async function enrichCbfScoresFromApiFootball(comp, cbfMatches) {
+  try {
+    const liveScores = await apiFootball.getLiveScores(comp.id, comp.config.footballDataSeason || "2026");
+
+    let cbfRows;
+    if (cbfMatches && cbfMatches.length) {
+      cbfRows = cbfMatches.map((m) => ({
+        id: `cbf_${m.id_jogo}`,
+        home: m.mandante?.nome || "",
+        away: m.visitante?.nome || ""
+      }));
+    } else {
+      const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+      const dbMatches = await prisma.match.findMany({
+        where: {
+          competitionId: comp.id,
+          OR: [{ status: 3 }, { status: 1, date: { gte: fourHoursAgo } }]
+        },
+        select: { id: true, homeTeam: true, awayTeam: true }
+      });
+      cbfRows = dbMatches.map((m) => ({
+        id: m.id,
+        home: m.homeTeam || "",
+        away: m.awayTeam || ""
+      }));
+    }
+
+    let scoresUpdated = 0;
+    let statusUpdated = 0;
+
+    for (const ls of liveScores) {
+      const row = cbfRows.find(
+        (r) => isSameTeam(r.home, ls.homeTeam) && isSameTeam(r.away, ls.awayTeam)
+      );
+      if (!row) continue;
+
+      if (ls.homeGoals != null && ls.awayGoals != null) {
+        await prisma.match.updateMany({
+          where: { id: row.id, manuallyAdjusted: false },
+          data: { homeScore: ls.homeGoals, awayScore: ls.awayGoals }
+        });
+        scoresUpdated++;
+      }
+
+      const apiStatus = ls.status;
+      let newStatus = null;
+      if (["FT", "AET", "PEN"].includes(apiStatus)) {
+        newStatus = 0;
+      } else if (["1H", "2H", "HT", "ET", "P", "BT"].includes(apiStatus)) {
+        newStatus = 3;
+      }
+      if (newStatus !== null) {
+        await prisma.match.updateMany({
+          where: { id: row.id, manuallyAdjusted: false },
+          data: { status: newStatus }
+        });
+        statusUpdated++;
+      }
+    }
+
+    if (scoresUpdated > 0) console.log(`  📊 ${scoresUpdated} placares atualizados via apiFootball`);
+    if (statusUpdated > 0) console.log(`  📊 ${statusUpdated} status atualizados via apiFootball`);
+  } catch (err) {
+    console.error(`  ⚠ Não foi possível atualizar placares via apiFootball: ${err.message}`);
+  }
+}
+
+/**
  * Enrich CBF matches with live scores + status from football-data.org.
  * CBF itself returns 0 for all goals, so football-data is the source of truth
  * for scores and live/final status.
@@ -304,7 +379,12 @@ async function enrichCbfMatchesWithTeamCodes(comp) {
  */
 async function enrichCbfScoresFromFootballData(comp, cbfMatches) {
   const { footballDataLeagueId, footballDataSeason } = comp.config;
-  if (!footballDataLeagueId || !process.env.FOOTBALL_DATA_API_KEY) return;
+
+  // Copa do Brasil has no football-data.org league — use apiFootball instead
+  if (!footballDataLeagueId) {
+    return enrichCbfScoresFromApiFootball(comp, cbfMatches);
+  }
+  if (!process.env.FOOTBALL_DATA_API_KEY) return;
 
   const scoreOnly = !cbfMatches;
   try {
@@ -543,7 +623,76 @@ async function refreshLiveScores(compId) {
 
   try {
     if (comp.apiProvider === "cbf") {
-      await enrichCbfScoresFromFootballData(comp);
+      if (comp.config.footballDataLeagueId) {
+        await enrichCbfScoresFromFootballData(comp);
+      } else {
+        // Copa do Brasil: no football-data.org, use apiFootball for scores/status
+        const liveScores = await apiFootball.getLiveScores(compId, comp.config.footballDataSeason || "2026");
+        if (liveScores.length > 0) {
+          let scoresUpdated = 0;
+          let statusUpdated = 0;
+          for (const ls of liveScores) {
+            const matches = await prisma.match.findMany({
+              where: {
+                competitionId: compId,
+                OR: [
+                  { homeTeam: ls.homeTeam },
+                  { awayTeam: ls.awayTeam }
+                ]
+              },
+              select: { id: true, homeTeam: true, awayTeam: true, status: true, manuallyAdjusted: true }
+            });
+            for (const m of matches) {
+              if (m.manuallyAdjusted) continue;
+              if (!isSameTeam(m.homeTeam, ls.homeTeam) || !isSameTeam(m.awayTeam, ls.awayTeam)) continue;
+
+              if (ls.homeGoals != null && ls.awayGoals != null) {
+                await prisma.match.update({
+                  where: { id: m.id },
+                  data: { homeScore: ls.homeGoals, awayScore: ls.awayGoals }
+                });
+                scoresUpdated++;
+              }
+
+              const apiStatus = ls.status;
+              let newStatus = null;
+              if (["FT", "AET", "PEN"].includes(apiStatus) && m.status !== 0) {
+                newStatus = 0;
+              } else if (["1H", "2H", "HT", "ET", "P", "BT"].includes(apiStatus) && m.status !== 3) {
+                newStatus = 3;
+              }
+              if (newStatus !== null) {
+                await prisma.match.update({
+                  where: { id: m.id },
+                  data: { status: newStatus }
+                });
+                statusUpdated++;
+              }
+            }
+          }
+          if (scoresUpdated > 0) console.log(`  📊 ${scoresUpdated} placares atualizados via apiFootball`);
+          if (statusUpdated > 0) console.log(`  📊 ${statusUpdated} status atualizados via apiFootball`);
+        }
+
+        // Fallback: finish scheduled matches whose kickoff + 2h is in the past
+        await prisma.match.updateMany({
+          where: {
+            competitionId: compId,
+            status: 1,
+            date: { lt: new Date(Date.now() - 2 * 60 * 60 * 1000) }
+          },
+          data: { status: 0 }
+        });
+        // Promote recently-kicked-off matches to LIVE
+        await prisma.match.updateMany({
+          where: {
+            competitionId: compId,
+            status: 1,
+            date: { lte: new Date(), gte: new Date(Date.now() - 3 * 60 * 60 * 1000) }
+          },
+          data: { status: 3 }
+        });
+      }
     } else if (comp.apiProvider === "football-data") {
       // Libertadores — football-data is the source itself, so a normal sync here
       // both updates scores and status in one cheap call.
