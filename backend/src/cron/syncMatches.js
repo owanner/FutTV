@@ -460,8 +460,38 @@ async function enrichCbfScoresFromFootballData(comp, cbfMatches) {
 
     if (scoresUpdated > 0) console.log(`  📊 ${scoresUpdated} placares atualizados via football-data.org`);
     if (statusUpdated > 0) console.log(`  📊 ${statusUpdated} status atualizados via football-data.org`);
+
+    // Safety net: finish LIVE matches whose kickoff + 3.5h is in the past.
+    // Handles cases where football-data.org is unavailable or doesn't return
+    // a match that has already finished.
+    const threeHalfHoursAgo = new Date(Date.now() - 3.5 * 60 * 60 * 1000);
+    const staleLiveResult = await prisma.match.updateMany({
+      where: {
+        competitionId: comp.id,
+        status: 3,
+        date: { lt: threeHalfHoursAgo }
+      },
+      data: { status: 0 }
+    });
+    if (staleLiveResult.count > 0) {
+      console.log(`  📊 ${staleLiveResult.count} partidas AO VIVO encerradas por timeout (>3.5h)`);
+    }
   } catch (err) {
     console.error(`  ⚠ Não foi possível atualizar placares via football-data.org: ${err.message}`);
+
+    // Even if football-data.org fails, finish stale LIVE matches by time
+    const threeHalfHoursAgo = new Date(Date.now() - 3.5 * 60 * 60 * 1000);
+    const staleLiveResult = await prisma.match.updateMany({
+      where: {
+        competitionId: comp.id,
+        status: 3,
+        date: { lt: threeHalfHoursAgo }
+      },
+      data: { status: 0 }
+    });
+    if (staleLiveResult.count > 0) {
+      console.log(`  📊 ${staleLiveResult.count} partidas AO VIVO encerradas por timeout (>3.5h, fallback)`);
+    }
   }
 }
 
@@ -674,6 +704,22 @@ async function refreshLiveScores(compId) {
           if (statusUpdated > 0) console.log(`  📊 ${statusUpdated} status atualizados via apiFootball`);
         }
 
+        // Safety net: finish LIVE matches whose kickoff + 3.5h is in the past.
+        // This handles the case where apiFootball is unavailable or doesn't
+        // return the match (rate limit, team name mismatch, etc.).
+        const threeHalfHoursAgo = new Date(Date.now() - 3.5 * 60 * 60 * 1000);
+        const staleLiveResult = await prisma.match.updateMany({
+          where: {
+            competitionId: compId,
+            status: 3,
+            date: { lt: threeHalfHoursAgo }
+          },
+          data: { status: 0 }
+        });
+        if (staleLiveResult.count > 0) {
+          console.log(`  📊 ${staleLiveResult.count} partidas AO VIVO encerradas por timeout (>3.5h)`);
+        }
+
         // Fallback: finish scheduled matches whose kickoff + 2h is in the past
         await prisma.match.updateMany({
           where: {
@@ -784,13 +830,19 @@ async function syncMatches() {
 
 /**
  * Refresh scores for recently finished matches that may have 0x0 in the DB.
- * This handles the case where a CONMEBOL match finished but its scores were
- * never updated (scraper doesn't expose scores, and the live refresh window
- * may have been missed).
+ * This handles the case where a match finished but its scores were never
+ * updated (scraper doesn't expose scores, or the live refresh window was missed).
+ *
+ * Supported competitions:
+ * - CONMEBOL (Sulamericana/Libertadores): scraper doesn't expose scores
+ * - Copa do Brasil (CBF without football-data.org): apiFootball may not return the match
  */
 async function refreshRecentFinishedScores(compId) {
   const comp = competitions.find((c) => c.id === compId);
-  if (!comp || comp.apiProvider !== "conmebol") return;
+  if (!comp) return;
+  const isConmebol = comp.apiProvider === "conmebol";
+  const isCopaDoBrasil = comp.apiProvider === "cbf" && !comp.config.footballDataLeagueId;
+  if (!isConmebol && !isCopaDoBrasil) return;
 
   try {
     const scores = await apiFootball.getLiveScores(compId, comp.config.footballDataSeason || "2026");

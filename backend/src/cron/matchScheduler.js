@@ -82,6 +82,19 @@ async function hasLiveMatch(compId) {
 }
 
 /**
+ * Returns whether the competition has any LIVE match whose kickoff was more
+ * than 3.5 hours ago. These are "stale live" matches that should have been
+ * finished by the API but weren't — the scheduler should force-finish them.
+ */
+async function hasStaleLiveMatch(compId) {
+  const threeHalfHoursAgo = new Date(Date.now() - 3.5 * 60 * 60 * 1000);
+  const count = await prisma.match.count({
+    where: { competitionId: compId, status: STATUS.LIVE, date: { lt: threeHalfHoursAgo } }
+  });
+  return count > 0;
+}
+
+/**
  * Decide cadence per competition and trigger the appropriate sync function.
  * Logged with a compact prefix per competition for tracing.
  */
@@ -93,6 +106,21 @@ async function tickCompetition(comp) {
 
     // 1) LIVE -> refresh scores every minute (the dispatcher itself).
     if (live) {
+      // 1a) Stale LIVE matches (live > 3.5h) — force-finish them first,
+      //     then continue with normal live refresh for truly live matches.
+      const staleLive = await hasStaleLiveMatch(compId);
+      if (staleLive) {
+        await prisma.match.updateMany({
+          where: {
+            competitionId: compId,
+            status: STATUS.LIVE,
+            date: { lt: new Date(Date.now() - 3.5 * 60 * 60 * 1000) }
+          },
+          data: { status: STATUS.FINISHED }
+        });
+        console.log(`⏱ [${comp.shortName || comp.name}] STALE-LIVE — force-finished stale LIVE matches`);
+      }
+
       if (shouldRun(compId, MINUTE, "live")) {
         console.log(`⏱ [${comp.shortName || comp.name}] LIVE — refreshLiveScores`);
         await refreshLiveScores(compId);
@@ -122,10 +150,12 @@ async function tickCompetition(comp) {
       return;
     }
 
-    // 1c) Recently finished CONMEBOL matches may have 0x0 scores (scraper
-    //     doesn't expose scores, live window may have been missed). Correct
-    //     them every 15 minutes for up to 6 hours after kickoff.
-    if (comp.apiProvider === "conmebol") {
+    // 1c) Recently finished matches may have 0x0 scores (CONMEBOL scraper
+    //     doesn't expose scores, Copa do Brasil apiFootball may miss them).
+    //     Correct them every 15 minutes for up to 6 hours after kickoff.
+    const isConmebol = comp.apiProvider === "conmebol";
+    const isCopaDoBrasil = comp.apiProvider === "cbf" && !comp.config.footballDataLeagueId;
+    if (isConmebol || isCopaDoBrasil) {
       const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
       const recentFinished = await prisma.match.count({
         where: {
