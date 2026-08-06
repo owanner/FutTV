@@ -658,50 +658,77 @@ async function refreshLiveScores(compId) {
       } else {
         // Copa do Brasil: no football-data.org, use apiFootball for scores/status
         const liveScores = await apiFootball.getLiveScores(compId, comp.config.footballDataSeason || "2026");
+        console.log(`  🔍 apiFootball retornou ${liveScores.length} placares para ${compId}`);
         if (liveScores.length > 0) {
+          for (const ls of liveScores) {
+            console.log(`    → ${ls.homeTeam} ${ls.homeGoals}–${ls.awayGoals} ${ls.awayTeam} (${ls.status})`);
+          }
+          // Query all LIVE + recent (last 4h) matches for this competition,
+          // then match by team name using isSameTeam (fuzzy match). Using exact
+          // DB match (homeTeam: ls.homeTeam) fails when apiFootball returns
+          // slightly different names (accents, abbreviations, etc.).
+          const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+          const dbMatches = await prisma.match.findMany({
+            where: {
+              competitionId: compId,
+              OR: [{ status: 3 }, { status: 1, date: { gte: fourHoursAgo } }]
+            },
+            select: { id: true, homeTeam: true, awayTeam: true, status: true, manuallyAdjusted: true }
+          });
+
           let scoresUpdated = 0;
           let statusUpdated = 0;
+          let noMatch = 0;
           for (const ls of liveScores) {
-            const matches = await prisma.match.findMany({
-              where: {
-                competitionId: compId,
-                OR: [
-                  { homeTeam: ls.homeTeam },
-                  { awayTeam: ls.awayTeam }
-                ]
-              },
-              select: { id: true, homeTeam: true, awayTeam: true, status: true, manuallyAdjusted: true }
-            });
-            for (const m of matches) {
-              if (m.manuallyAdjusted) continue;
-              if (!isSameTeam(m.homeTeam, ls.homeTeam) || !isSameTeam(m.awayTeam, ls.awayTeam)) continue;
+            const row = dbMatches.find(
+              (m) => isSameTeam(m.homeTeam, ls.homeTeam) && isSameTeam(m.awayTeam, ls.awayTeam)
+            );
+            if (!row || row.manuallyAdjusted) {
+              if (!row) {
+                console.log(`    ⚠ Sem correspondência no DB para: ${ls.homeTeam} vs ${ls.awayTeam}`);
+                noMatch++;
+              }
+              continue;
+            }
 
-              if (ls.homeGoals != null && ls.awayGoals != null) {
-                await prisma.match.update({
-                  where: { id: m.id },
-                  data: { homeScore: ls.homeGoals, awayScore: ls.awayGoals }
-                });
-                scoresUpdated++;
-              }
+            if (ls.homeGoals != null && ls.awayGoals != null) {
+              await prisma.match.update({
+                where: { id: row.id },
+                data: { homeScore: ls.homeGoals, awayScore: ls.awayGoals }
+              });
+              scoresUpdated++;
+            }
 
-              const apiStatus = ls.status;
-              let newStatus = null;
-              if (["FT", "AET", "PEN"].includes(apiStatus) && m.status !== 0) {
-                newStatus = 0;
-              } else if (["1H", "2H", "HT", "ET", "P", "BT"].includes(apiStatus) && m.status !== 3) {
-                newStatus = 3;
-              }
-              if (newStatus !== null) {
-                await prisma.match.update({
-                  where: { id: m.id },
-                  data: { status: newStatus }
-                });
-                statusUpdated++;
-              }
+            const apiStatus = ls.status;
+            let newStatus = null;
+            if (["FT", "AET", "PEN"].includes(apiStatus) && row.status !== 0) {
+              newStatus = 0;
+            } else if (["1H", "2H", "HT", "ET", "P", "BT"].includes(apiStatus) && row.status !== 3) {
+              newStatus = 3;
+            }
+            if (newStatus !== null) {
+              await prisma.match.update({
+                where: { id: row.id },
+                data: { status: newStatus }
+              });
+              statusUpdated++;
             }
           }
           if (scoresUpdated > 0) console.log(`  📊 ${scoresUpdated} placares atualizados via apiFootball`);
           if (statusUpdated > 0) console.log(`  📊 ${statusUpdated} status atualizados via apiFootball`);
+          if (noMatch > 0) console.log(`  ⚠ ${noMatch} partidas do apiFootball sem correspondência no DB`);
+        } else {
+          // apiFootball returned 0 results — log LIVE matches still in the DB
+          const liveInDb = await prisma.match.findMany({
+            where: { competitionId: compId, status: 3 },
+            select: { id: true, homeTeam: true, awayTeam: true, date: true }
+          });
+          if (liveInDb.length > 0) {
+            console.log(`  ⚠ apiFootball retornou 0, mas ${liveInDb.length} partidas LIVE no DB:`);
+            for (const m of liveInDb) {
+              console.log(`    → ${m.homeTeam} vs ${m.awayTeam} (kickoff: ${m.date})`);
+            }
+          }
         }
 
         // Safety net: finish LIVE matches whose kickoff + 3.5h is in the past.
@@ -750,47 +777,47 @@ async function refreshLiveScores(compId) {
       // Fetch live scores from apiFootball (CONMEBOL scraper doesn't expose scores)
       const liveScores = await apiFootball.getLiveScores(compId, comp.config.footballDataSeason || "2026");
       if (liveScores.length > 0) {
+        // Query all LIVE + recent matches, then match by isSameTeam (fuzzy).
+        const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+        const dbMatches = await prisma.match.findMany({
+          where: {
+            competitionId: compId,
+            OR: [{ status: 3 }, { status: 1, date: { gte: fourHoursAgo } }]
+          },
+          select: { id: true, homeTeam: true, awayTeam: true, status: true, manuallyAdjusted: true }
+        });
+
         let scoresUpdated = 0;
         let statusUpdated = 0;
         for (const ls of liveScores) {
-          const matches = await prisma.match.findMany({
-            where: {
-              competitionId: compId,
-              OR: [
-                { homeTeam: ls.homeTeam },
-                { awayTeam: ls.awayTeam }
-              ]
-            },
-            select: { id: true, homeTeam: true, awayTeam: true, status: true, manuallyAdjusted: true }
-          });
-          for (const m of matches) {
-            if (m.manuallyAdjusted) continue;
-            if (!isSameTeam(m.homeTeam, ls.homeTeam) || !isSameTeam(m.awayTeam, ls.awayTeam)) continue;
+          const row = dbMatches.find(
+            (m) => isSameTeam(m.homeTeam, ls.homeTeam) && isSameTeam(m.awayTeam, ls.awayTeam)
+          );
+          if (!row || row.manuallyAdjusted) continue;
 
-            // Update scores
-            if (ls.homeGoals != null && ls.awayGoals != null) {
-              await prisma.match.update({
-                where: { id: m.id },
-                data: { homeScore: ls.homeGoals, awayScore: ls.awayGoals }
-              });
-              scoresUpdated++;
-            }
+          // Update scores
+          if (ls.homeGoals != null && ls.awayGoals != null) {
+            await prisma.match.update({
+              where: { id: row.id },
+              data: { homeScore: ls.homeGoals, awayScore: ls.awayGoals }
+            });
+            scoresUpdated++;
+          }
 
-            // Update status: apiFootball FT/AET/PEN -> FINISHED(0), live statuses -> LIVE(3)
-            const apiStatus = ls.status;
-            let newStatus = null;
-            if (["FT", "AET", "PEN"].includes(apiStatus) && m.status !== 0) {
-              newStatus = 0;
-            } else if (["1H", "2H", "HT", "ET", "P", "BT"].includes(apiStatus) && m.status !== 3) {
-              newStatus = 3;
-            }
-            if (newStatus !== null) {
-              await prisma.match.update({
-                where: { id: m.id },
-                data: { status: newStatus }
-              });
-              statusUpdated++;
-            }
+          // Update status: apiFootball FT/AET/PEN -> FINISHED(0), live statuses -> LIVE(3)
+          const apiStatus = ls.status;
+          let newStatus = null;
+          if (["FT", "AET", "PEN"].includes(apiStatus) && row.status !== 0) {
+            newStatus = 0;
+          } else if (["1H", "2H", "HT", "ET", "P", "BT"].includes(apiStatus) && row.status !== 3) {
+            newStatus = 3;
+          }
+          if (newStatus !== null) {
+            await prisma.match.update({
+              where: { id: row.id },
+              data: { status: newStatus }
+            });
+            statusUpdated++;
           }
         }
         if (scoresUpdated > 0) console.log(`  📊 ${scoresUpdated} placares atualizados via apiFootball`);
