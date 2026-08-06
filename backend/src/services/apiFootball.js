@@ -21,7 +21,7 @@ async function getRequest(url, params = {}) {
 
 const LEAGUE_MAP = {
   brasileirao2026: 71,
-  copadobrasil2026: 72,
+  copadobrasil2026: 73,
   libertadores2026: 13,
   sulamericana2026: 11
 };
