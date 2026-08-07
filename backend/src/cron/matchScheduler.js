@@ -152,18 +152,18 @@ async function tickCompetition(comp) {
 
     // 1c) Recently finished matches may have 0x0 scores (CONMEBOL scraper
     //     doesn't expose scores, Copa do Brasil apiFootball may miss them).
-    //     Correct them every 15 minutes for up to 6 hours after kickoff.
+    //     Correct them periodically for up to 24 hours after kickoff.
     const isConmebol = comp.apiProvider === "conmebol";
     const isCopaDoBrasil = comp.apiProvider === "cbf" && !comp.config.footballDataLeagueId;
     if (isConmebol || isCopaDoBrasil) {
-      const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
+      const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const recentFinished = await prisma.match.count({
         where: {
           competitionId: compId,
           status: 0,
           homeScore: 0,
           awayScore: 0,
-          date: { gte: sixHoursAgo }
+          date: { gte: dayAgo }
         }
       });
       if (recentFinished > 0 && shouldRun(compId, 15 * MINUTE, "recent-finished")) {

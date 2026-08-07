@@ -310,11 +310,17 @@ async function enrichCbfScoresFromApiFootball(comp, cbfMatches) {
         away: m.visitante?.nome || ""
       }));
     } else {
+      // Score-only fallback: consider live, recent scheduled, AND finished
+      // matches with 0x0 scores (CBF always returns 0 for goals).
       const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
       const dbMatches = await prisma.match.findMany({
         where: {
           competitionId: comp.id,
-          OR: [{ status: 3 }, { status: 1, date: { gte: fourHoursAgo } }]
+          OR: [
+            { status: 3 },
+            { status: 1, date: { gte: fourHoursAgo } },
+            { status: 0, homeScore: 0, awayScore: 0 }
+          ]
         },
         select: { id: true, homeTeam: true, awayTeam: true }
       });
