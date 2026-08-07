@@ -88,28 +88,27 @@ function inferStatus(match) {
 /**
  * Map a CBF Copa do Brasil match to a friendly stage name.
  *
- * The CBF API exposes `rodada` (round) but it does NOT map 1:1 to a knockout
- * phase — the same round holds matches from several real stages. We infer
- * the stage from the round number:
+ * The CBF API exposes `rodada` (round) and `num_jogo` (match number).
+ * Round numbers overlap across phases, so we use `num_jogo` to determine
+ * the phase:
  *
- *   - Rounds 1-2: Oitavas de Final (home leg in round 1, away leg in round 2)
- *   - Rounds 3-4: Quartas de Final
- *   - Rounds 5-6: Semifinal
- *   - Round 7: Final
- *   - Other rounds: "Fase Inicial" (qualifying / early rounds)
+ *   - num_jogo 127-142: Oitavas de Final (8 two-legged matchups = 16 matches)
+ *   - num_jogo 95-126: earlier qualifying round (not shown in bracket)
+ *   - num_jogo 1-94: Fase Inicial (94 single-leg matches)
+ *   - Other: "Fase Inicial" (fallback)
  */
-function inferCbrStage(round, competitionId, status) {
+function inferCbrStage(round, competitionId, status, numJogo) {
   if (competitionId !== "copadobrasil2026") return null;
 
-  const r = parseInt(round);
-  if (Number.isNaN(r)) return "Fase Inicial";
+  const n = parseInt(numJogo);
+  if (!Number.isNaN(n)) {
+    // Use num_jogo to determine phase (most reliable for Copa do Brasil)
+    // Oitavas: num_jogo 127-142 (8 two-legged matchups = 16 matches)
+    // The earlier two-legged round (num_jogo 95-126) is NOT the Oitavas -
+    // it's a qualifying round that should be grouped with Fase Inicial.
+    if (n >= 127 && n <= 142) return "Oitavas de Final";
+  }
 
-  if (r === 1 || r === 2) return "Oitavas de Final";
-  if (r === 3 || r === 4) return "Quartas de Final";
-  if (r === 5 || r === 6) return "Semifinal";
-  if (r === 7) return "Final";
-
-  // Rounds outside known knockout phases (qualifying, early rounds).
   return "Fase Inicial";
 }
 
@@ -135,7 +134,7 @@ function buildMatchData(match, compId, seasonId) {
   let awayScore = (isFinished || isLive) ? (isNaN(awayGoals) ? 0 : awayGoals) : null;
 
   const stageName = match.campeonato?.nome_categoria
-    || inferCbrStage(match.rodada, compId, status)
+    || inferCbrStage(match.rodada, compId, status, match.num_jogo)
     || null;
 
   // For Copa do Brasil knockouts, embed the penalty result in the stadium
