@@ -17,11 +17,16 @@ router.get("/", (req, res) => {
 
 /**
  * Returns, for every competition, an object with:
- *   id, hasUpcoming, hasLive, nextMatchDate, lastFinishedDate
+ *   id, hasUpcoming, hasLive, isActive, nextMatchDate, lastFinishedDate
  *
  * `hasUpcoming` true  -> competition still has scheduled matches in the future
  * `hasLive`     true  -> competition currently has a live match
- * A competition with neither is considered "Encerrada".
+ * `isActive`    true  -> competition is still in progress (format-aware)
+ *
+ * For knockout / groups-then-knockout formats the competition is only
+ * considered "encerrada" once the final match has been played.
+ * For league / round-robin formats, "encerrada" means no more scheduled or
+ * live matches.
  */
 router.get("/status", async (req, res) => {
   try {
@@ -40,6 +45,7 @@ router.get("/status", async (req, res) => {
           id,
           hasUpcoming: false,
           hasLive: false,
+          hasFinishedMatch: false,
           nextMatchDate: null,
           lastFinishedDate: null
         };
@@ -52,20 +58,57 @@ router.get("/status", async (req, res) => {
         map[id].hasLive = true;
       }
       if (r.status === STATUS.FINISHED) {
+        map[id].hasFinishedMatch = true;
         map[id].lastFinishedDate = r._max.date;
       }
     }
 
+    // Check which competitions have a finished final match.
+    const finishedFinals = await prisma.match.findMany({
+      where: {
+        status: STATUS.FINISHED,
+        OR: [
+          { stageId: "FINAL" },
+          { stageName: "Final" }
+        ]
+      },
+      select: { competitionId: true }
+    });
+    const finalsByComp = new Set(finishedFinals.map((m) => m.competitionId));
+
     // Make sure every configured competition shows up, even with no matches.
-    const result = competitions.map((c) =>
-      map[c.id] || {
+    const result = competitions.map((c) => {
+      const entry = map[c.id] || {
         id: c.id,
         hasUpcoming: false,
         hasLive: false,
+        hasFinishedMatch: false,
         nextMatchDate: null,
         lastFinishedDate: null
+      };
+
+      const hasFinishedFinal = finalsByComp.has(c.id);
+      const format = c.format || "groups";
+
+      // Determine if the competition is still active.
+      let isActive;
+      if (format === "knockout" || format === "groups-then-knockout") {
+        // Knockout: active as long as the final hasn't been played yet
+        isActive = entry.hasUpcoming || entry.hasLive || !hasFinishedFinal;
+      } else {
+        // League / round-robin: active while there are upcoming or live matches
+        isActive = entry.hasUpcoming || entry.hasLive;
       }
-    );
+
+      return {
+        id: c.id,
+        hasUpcoming: entry.hasUpcoming,
+        hasLive: entry.hasLive,
+        isActive,
+        nextMatchDate: entry.nextMatchDate,
+        lastFinishedDate: entry.lastFinishedDate
+      };
+    });
 
     res.json(result);
   } catch (error) {

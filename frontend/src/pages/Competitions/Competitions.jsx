@@ -91,7 +91,7 @@ export default function Competitions() {
 
   for (const c of allCompetitions) {
     const st = statusMap?.[c.id];
-    const isActive = st ? st.hasUpcoming || st.hasLive : true;
+    const isActive = st ? st.isActive : true;
     (isActive ? active : finished).push({ c, st });
   }
 

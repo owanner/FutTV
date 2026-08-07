@@ -4,10 +4,10 @@ import api from "../api/futtvApi";
 /**
  * Fetches per-competition status flags from /competitions/status.
  * Returns an object keyed by competitionId:
- *   { [id]: { id, hasUpcoming, hasLive, nextMatchDate, lastFinishedDate } }
+ *   { [id]: { id, hasUpcoming, hasLive, isActive, nextMatchDate, lastFinishedDate } }
  *
- * Used to decide which competitions are "active" (have upcoming/live matches)
- * vs "finished" (no upcoming/live anymore).
+ * `isActive` is format-aware: knockout competitions are only considered
+ * finished once the final has been played.
  */
 export function useCompetitionsStatus() {
   return useQuery({
