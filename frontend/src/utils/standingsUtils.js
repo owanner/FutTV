@@ -239,10 +239,10 @@ export function groupMatchesByPhase(matches, phases, competitionId) {
     return byPhase;
   }
 
-  // Copa do Brasil: finished matches (status === 0) belong to "Fase Inicial"
-  // and are NOT part of the knockout bracket — only classify upcoming ones.
+  // Copa do Brasil: exclude "Fase Inicial" qualifying rounds from the bracket,
+  // but keep finished knockout matches (Oitavas, Quartas, etc.) visible.
   const pool = competitionId === "copadobrasil2026"
-    ? (matches || []).filter((m) => m.status !== 0)
+    ? (matches || []).filter((m) => m.stageName && m.stageName !== "Fase Inicial")
     : (matches || []);
 
   pool.forEach((m) => {

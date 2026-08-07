@@ -90,32 +90,27 @@ function inferStatus(match) {
  *
  * The CBF API exposes `rodada` (round) but it does NOT map 1:1 to a knockout
  * phase — the same round holds matches from several real stages. We infer
- * the stage from the match's status:
+ * the stage from the round number:
  *
- *   - Finished matches (status === 0) all belong to the "Fase Inicial"
- *     (qualifying rounds that have already been played).
- *   - Upcoming matches in rounds 1 and 2 are the Oitavas de Final (home leg
- *     in round 1, away leg in round 2). The away leg has a later date but
- *     both keep `round` 1/2 in the CBF payload, so we group them together
- *     under "Oitavas de Final".
- *
- * Future quartas/semi/final placeholders will appear once published by CBF.
+ *   - Rounds 1-2: Oitavas de Final (home leg in round 1, away leg in round 2)
+ *   - Rounds 3-4: Quartas de Final
+ *   - Rounds 5-6: Semifinal
+ *   - Round 7: Final
+ *   - Other rounds: "Fase Inicial" (qualifying / early rounds)
  */
 function inferCbrStage(round, competitionId, status) {
   if (competitionId !== "copadobrasil2026") return null;
 
-  // Finished matches all collapse to "Fase Inicial" – the Knockout tab in
-  // the frontend overrides this stage-based grouping using match status.
-  if (status === 0) return "Fase Inicial";
-
-  // Upcoming matches: rounds 1 and 2 represent the home/away legs of the
-  // Oitavas de Final in the current Copa do Brasil edition.
   const r = parseInt(round);
-  if (!Number.isNaN(r) && (r === 1 || r === 2)) return "Oitavas de Final";
+  if (Number.isNaN(r)) return "Fase Inicial";
 
-  // Higher upcoming rounds (3+) would be Quartas/Semifinal/Final — but they
-  // are not yet published by CBF in this dataset; return a generic label.
-  return `Rodada ${r || "?"}`;
+  if (r === 1 || r === 2) return "Oitavas de Final";
+  if (r === 3 || r === 4) return "Quartas de Final";
+  if (r === 5 || r === 6) return "Semifinal";
+  if (r === 7) return "Final";
+
+  // Rounds outside known knockout phases (qualifying, early rounds).
+  return "Fase Inicial";
 }
 
 /**
