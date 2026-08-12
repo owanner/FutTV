@@ -9,8 +9,10 @@ const footballDataApi = require("../services/footballDataApi");
 const cbfApi = require("../services/cbfApi");
 const apiFootball = require("../services/apiFootball");
 const conmebolScraper = require("../services/conmebolScraper");
+const { getAdapter } = require("../services/adapters");
 const { competitions } = require("../config/competitions");
 const { isSameTeam } = require("../utils/textUtils");
+const { invalidateTeamIndex } = require("../services/teamIndexService");
 const aliases = require("../../data/teamAliases.json");
 
 function extractReferee(match) {
@@ -631,10 +633,45 @@ async function syncCompetition(compId) {
   const comp = competitions.find((c) => c.id === compId);
   if (!comp) return;
   try {
-    if (comp.apiProvider === "fifa") await syncFifaCompetition(comp);
-    else if (comp.apiProvider === "football-data") await syncFootballDataCompetition(comp);
-    else if (comp.apiProvider === "cbf") await syncCbfCompetition(comp);
-    else if (comp.apiProvider === "conmebol") await syncConmebolCompetition(comp);
+    const adapter = getAdapter(comp);
+    console.log(`\n⚽ [${comp.name}] Sincronizando partidas via Adapter (${comp.apiProvider})...`);
+    const matches = await adapter.getMatches();
+    console.log(`📅 ${matches.length} jogos encontrados`);
+
+    let upserted = 0;
+    for (const matchData of matches) {
+      const existing = await prisma.match.findUnique({
+        where: { id: matchData.id },
+        select: { manuallyAdjusted: true }
+      });
+      if (existing?.manuallyAdjusted) {
+        console.log(`  ⏭ Pulando ${matchData.id} (ajuste manual)`);
+        continue;
+      }
+
+      await prisma.match.upsert({
+        where: { id: matchData.id },
+        update: matchData,
+        create: matchData
+      });
+      upserted++;
+    }
+
+    if (comp.apiProvider === "cbf") {
+      await enrichCbfMatchesWithTeamCodes(comp);
+      await enrichCbfScoresFromFootballData(comp, matches);
+    } else if (comp.apiProvider === "fifa") {
+      for (const m of matches) {
+        try {
+          await syncFifaBroadcasts(m.id, m.seasonId);
+        } catch {}
+      }
+    }
+
+    invalidateTeamIndex();
+    if (upserted > 0) {
+      console.log(`  ✅ ${upserted} partidas sincronizadas`);
+    }
   } catch (error) {
     console.error(`❌ [${comp.name}] Erro na sincronização: ${error.message}`);
   }
@@ -858,6 +895,7 @@ async function syncMatches() {
   for (const comp of competitions) {
     await syncCompetition(comp.id);
   }
+  invalidateTeamIndex();
   console.log("\n✅ Sincronização de jogos concluída\n");
 }
 

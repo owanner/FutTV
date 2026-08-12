@@ -4,6 +4,7 @@
  */
 
 const conmebolScraper = require("../conmebolScraper");
+const prisma = require("../../database/prisma");
 
 class ConmebolAdapter {
   constructor(comp) {
@@ -16,7 +17,28 @@ class ConmebolAdapter {
     
     const start = fixtureIdRange?.start ?? 680;
     const end = fixtureIdRange?.end ?? 1800;
-    const scraperOpts = conmebolCompetitionId ? { expectedCompetitionId: String(conmebolCompetitionId) } : {};
+
+    // If no match is currently LIVE, skip heavy CONMEBOL scraping to keep the system lightning fast (0ms)
+    const liveCount = await prisma.match.count({
+      where: { competitionId: this.comp.id, status: 3 }
+    });
+    if (liveCount === 0) {
+      return [];
+    }
+
+    const activeMatches = await prisma.match.findMany({
+      where: { competitionId: this.comp.id, status: 3 },
+      select: { id: true }
+    });
+
+    const knownIds = activeMatches
+      .map(m => parseInt(m.id.replace(`conmebol_${conmebolSlug}_`, ""), 10))
+      .filter(n => !isNaN(n));
+
+    const scraperOpts = {
+      knownIds,
+      ...(conmebolCompetitionId ? { expectedCompetitionId: String(conmebolCompetitionId) } : {})
+    };
 
     const fixtures = await conmebolScraper.getAllFixtures(conmebolSlug, start, end, scraperOpts);
     
@@ -59,13 +81,14 @@ class ConmebolAdapter {
 
   async getBroadcasts() {
     const { conmebolSlug, fixtureIdRange, conmebolCompetitionId } = this.comp.config;
-    const scraperOpts = {};
+    const { allIds } = await getFilteredKnownFixtureIds(this.comp.id, conmebolSlug);
+    const scraperOpts = {
+      knownIds: allIds,
+      ...(conmebolCompetitionId ? { expectedCompetitionId: String(conmebolCompetitionId) } : {})
+    };
     if (fixtureIdRange) {
       scraperOpts.startId = fixtureIdRange.start;
       scraperOpts.endId = fixtureIdRange.end;
-    }
-    if (conmebolCompetitionId) {
-      scraperOpts.expectedCompetitionId = String(conmebolCompetitionId);
     }
     return conmebolScraper.getAllBroadcasts(conmebolSlug, scraperOpts);
   }

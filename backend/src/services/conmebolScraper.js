@@ -153,12 +153,34 @@ async function scrapeFixturePage(fixtureId, slug = "libertadores", opts = {}) {
  */
 async function discoverFixtureIds(slug, startId = 1500, endId = 1800, opts = {}) {
   const results = [];
+  const seenIds = new Set();
+
+  if (opts.knownIds && opts.knownIds.length > 0) {
+    const knownBatches = [];
+    for (let i = 0; i < opts.knownIds.length; i += BATCH_SIZE) {
+      const chunk = opts.knownIds.slice(i, i + BATCH_SIZE);
+      knownBatches.push(
+        Promise.all(chunk.map(id => scrapeFixturePage(id, slug, opts).then(data => (data ? { id, ...data } : null)).catch(() => null)))
+      );
+    }
+    const settled = await Promise.all(knownBatches);
+    for (const batchRes of settled) {
+      for (const r of batchRes) {
+        if (r && !seenIds.has(r.id)) {
+          seenIds.add(r.id);
+          results.push(r);
+        }
+      }
+    }
+    return results;
+  }
 
   for (let batchStart = startId; batchStart <= endId; batchStart += BATCH_SIZE) {
     const ids = [];
     for (let id = batchStart; id < batchStart + BATCH_SIZE && id <= endId; id++) {
-      ids.push(id);
+      if (!seenIds.has(id)) ids.push(id);
     }
+    if (ids.length === 0) continue;
 
     const batch = ids.map(id =>
       scrapeFixturePage(id, slug, opts).then(data => (data ? { id, ...data } : null)).catch(() => null)
@@ -166,7 +188,10 @@ async function discoverFixtureIds(slug, startId = 1500, endId = 1800, opts = {})
 
     const batchResults = await Promise.all(batch);
     for (const result of batchResults) {
-      if (result) results.push(result);
+      if (result && !seenIds.has(result.id)) {
+        seenIds.add(result.id);
+        results.push(result);
+      }
     }
   }
 

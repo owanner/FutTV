@@ -9,6 +9,7 @@ const footballDataApi = require("../services/footballDataApi");
 const conmebolScraper = require("../services/conmebolScraper");
 const { competitions } = require("../config/competitions");
 const { STATUS } = require("../utils/matchStatus");
+const { invalidateTeamIndex } = require("../services/teamIndexService");
 
 async function syncFifaStandings(comp) {
   const config = comp.config;
@@ -394,6 +395,7 @@ async function syncStandings() {
       console.error(`❌ [${comp.name}] Erro ao sincronizar classificação: ${error.message}`);
     }
   }
+  invalidateTeamIndex();
   console.log("✅ Sincronização de classificação concluída\n");
 }
 
