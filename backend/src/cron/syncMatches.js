@@ -587,7 +587,7 @@ async function syncConmebolCompetition(comp) {
       round: null,
       stadium: f.venue || null,
       city: null,
-      referee: null,
+      referee: f.referee || null,
       attendance: null,
       status,
       homeScore: f.homeScore ?? null,
