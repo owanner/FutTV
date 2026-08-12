@@ -104,9 +104,9 @@ function inferCbrStage(round, competitionId, status, numJogo) {
   if (!Number.isNaN(n)) {
     // Use num_jogo to determine phase (most reliable for Copa do Brasil)
     // Oitavas: num_jogo 127-142 (8 two-legged matchups = 16 matches)
-    // The earlier two-legged round (num_jogo 95-126) is NOT the Oitavas -
-    // it's a qualifying round that should be grouped with Fase Inicial.
+    // Quartas: num_jogo 143-150 (4 two-legged matchups = 8 matches)
     if (n >= 127 && n <= 142) return "Oitavas de Final";
+    if (n >= 143 && n <= 150) return "Quartas de Final";
   }
 
   return "Fase Inicial";

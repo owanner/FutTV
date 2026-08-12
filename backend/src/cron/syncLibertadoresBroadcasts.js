@@ -88,6 +88,8 @@ async function syncCompetitionBroadcasts(comp) {
     });
     console.log(`[${comp.shortName}] ${dbMatches.length} partidas no banco de dados`);
 
+    const dbMatchesMap = new Map(dbMatches.map(m => [m.id, m]));
+
     let matched = 0;
     let unmatched = 0;
     let created = 0;
@@ -95,7 +97,8 @@ async function syncCompetitionBroadcasts(comp) {
     for (const item of scraped) {
       if (!item.broadcasts || item.broadcasts.length === 0) continue;
 
-      const dbMatch = findBestMatch(item, dbMatches);
+      const directId = `conmebol_${slug}_${item.conmebolFixtureId}`;
+      const dbMatch = dbMatchesMap.get(directId) || findBestMatch(item, dbMatches);
       if (!dbMatch) {
         unmatched++;
         console.log(`⚠ Sem correspondência: ${item.homeTeam} vs ${item.awayTeam} (${item.fixtureDate?.toISOString()?.split("T")[0] || "?"})`);
