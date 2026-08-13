@@ -111,7 +111,10 @@ router.get("/all", async (req, res) => {
             where: {
               ...compWhere,
               status: STATUS.SCHEDULED,
-              date: { gte: now }
+              OR: [
+                { date: { gte: now } },
+                { date: { gte: startOfToday(), lte: endOfToday() } }
+              ]
             },
             select: MATCH_SELECT,
             orderBy: { date: "asc" },

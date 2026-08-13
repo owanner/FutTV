@@ -62,9 +62,7 @@ async function getNextUpcomingDate(compId) {
  * keeps syncing fast until the API flips the status to LIVE/FINISHED.
  */
 async function hasStaleScheduledMatch(compId) {
-  // Anything scheduled that should have kicked off >= 3 min ago.
-  const gracefulMinutes = 3 * MINUTE;
-  const threshold = new Date(Date.now() - gracefulMinutes);
+  const threshold = new Date();
   const count = await prisma.match.count({
     where: { competitionId: compId, status: STATUS.SCHEDULED, date: { lt: threshold } }
   });
