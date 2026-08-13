@@ -85,9 +85,9 @@ async function hasLiveMatch(compId) {
  * finished by the API but weren't — the scheduler should force-finish them.
  */
 async function hasStaleLiveMatch(compId) {
-  const threeHalfHoursAgo = new Date(Date.now() - 3.5 * 60 * 60 * 1000);
+  const twoHalfHoursAgo = new Date(Date.now() - 2.5 * 60 * 60 * 1000);
   const count = await prisma.match.count({
-    where: { competitionId: compId, status: STATUS.LIVE, date: { lt: threeHalfHoursAgo } }
+    where: { competitionId: compId, status: STATUS.LIVE, date: { lt: twoHalfHoursAgo } }
   });
   return count > 0;
 }
@@ -112,7 +112,7 @@ async function tickCompetition(comp) {
           where: {
             competitionId: compId,
             status: STATUS.LIVE,
-            date: { lt: new Date(Date.now() - 3.5 * 60 * 60 * 1000) }
+            date: { lt: new Date(Date.now() - 2.5 * 60 * 60 * 1000) }
           },
           data: { status: STATUS.FINISHED }
         });
@@ -218,6 +218,18 @@ async function tickCompetition(comp) {
 let started = false;
 let ticking = false;
 
+async function globalSweep() {
+  const twoHalfHoursAgo = new Date(Date.now() - 2.5 * 60 * 60 * 1000);
+  await prisma.match.updateMany({
+    where: { status: 3, date: { lt: twoHalfHoursAgo } },
+    data: { status: 0 }
+  });
+  await prisma.match.updateMany({
+    where: { status: 1, date: { lte: new Date() } },
+    data: { status: 3 }
+  });
+}
+
 function startMatchScheduler() {
   if (started) return;
   started = true;
@@ -230,6 +242,7 @@ function startMatchScheduler() {
     }
     ticking = true;
     try {
+      await globalSweep();
       for (const comp of competitions) {
         await tickCompetition(comp);
       }
@@ -240,9 +253,14 @@ function startMatchScheduler() {
 
   // Kick off once at startup so the first cycle does real work.
   console.log("🟢 Match scheduler iniciado (tick de 1 min, cadência por competição)");
-  Promise.all(competitions.map(tickCompetition)).catch((e) =>
-    console.error("Erro no tick inicial do scheduler:", e.message)
-  );
+  (async () => {
+    try {
+      await globalSweep();
+      await Promise.all(competitions.map(tickCompetition));
+    } catch (e) {
+      console.error("Erro no tick inicial do scheduler:", e.message);
+    }
+  })();
 }
 
 module.exports = { startMatchScheduler, tickCompetition };
