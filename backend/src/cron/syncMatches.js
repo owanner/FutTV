@@ -56,10 +56,17 @@ function buildFifaMatchData(match, compId) {
   };
 }
 
-function mapFbStatus(status) {
+function mapFbStatus(status, date) {
   if (status === "FINISHED" || status === "AWARDED") return 0;
   if (status === "LIVE" || status === "IN_PLAY" || status === "PAUSED" || status === "HALFTIME") return 3;
   if (status === "CANCELLED" || status === "POSTPONED" || status === "SUSPENDED") return 4;
+  if (date) {
+    const now = new Date();
+    const threeHalfHoursAgo = new Date(now.getTime() - 3.5 * 60 * 60 * 1000);
+    if (date > now) return 1;
+    if (date >= threeHalfHoursAgo) return 3;
+    return 0;
+  }
   return 1;
 }
 
@@ -102,6 +109,7 @@ function buildFootballDataMatchData(match, compId, seasonId) {
   const awayTeam = match.awayTeam || {};
   const stageRaw = typeof match.stage === "string" ? match.stage : match.stage?.name;
   const group = match.group?.name || (stageRaw === "GROUP_STAGE" ? null : null);
+  const date = new Date(match.utcDate);
   return {
     competitionId: compId,
     seasonId: seasonId,
@@ -115,13 +123,13 @@ function buildFootballDataMatchData(match, compId, seasonId) {
     awayFlag: awayTeam.crest || null,
     homeCode: homeTeam.tla || null,
     awayCode: awayTeam.tla || null,
-    date: new Date(match.utcDate),
+    date: date,
     round: match.matchday || null,
     stadium: match.venue || null,
     city: null,
     referee: match.referees?.[0]?.name || null,
     attendance: match.attendance?.toString() || null,
-    status: mapFbStatus(match.status),
+    status: mapFbStatus(match.status, date),
     homeScore: match.score?.fullTime?.home ?? null,
     awayScore: match.score?.fullTime?.away ?? null
   };
@@ -456,7 +464,7 @@ async function enrichCbfScoresFromFootballData(comp, cbfMatches) {
         scoresUpdated++;
       }
 
-      const fbStatus = mapFbStatus(fb.status);
+      const fbStatus = mapFbStatus(fb.status, fb.utcDate ? new Date(fb.utcDate) : null);
       if (fbStatus !== 1) {
         await prisma.match.updateMany({
           where: { id: row.id, manuallyAdjusted: false },
