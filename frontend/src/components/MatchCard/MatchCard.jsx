@@ -110,6 +110,8 @@ function ScoreBlock({ match, hasScore, large = false, dark = false }) {
     ? { xs: "1.9rem", sm: "2.4rem" }
     : { xs: "1.15rem", sm: "1.25rem" };
 
+  const hasPens = match.homePenaltyScore != null && match.awayPenaltyScore != null;
+
   return (
     <Stack
       alignItems="center"
@@ -126,7 +128,25 @@ function ScoreBlock({ match, hasScore, large = false, dark = false }) {
           color: dark ? "#fff" : hasScore ? "text.primary" : "primary.main"
         }}
       >
-        {hasScore ? `${match.homeScore ?? 0} – ${match.awayScore ?? 0}` : "VS"}
+        {hasScore ? (
+          hasPens ? (
+            <>
+              {match.homeScore ?? 0}{" "}
+              <Box component="span" sx={{ fontSize: "0.65em", fontWeight: 700, opacity: dark ? 0.9 : 0.75, verticalAlign: "middle" }}>
+                ({match.homePenaltyScore})
+              </Box>{" "}
+              –{" "}
+              <Box component="span" sx={{ fontSize: "0.65em", fontWeight: 700, opacity: dark ? 0.9 : 0.75, verticalAlign: "middle" }}>
+                ({match.awayPenaltyScore})
+              </Box>{" "}
+              {match.awayScore ?? 0}
+            </>
+          ) : (
+            `${match.homeScore ?? 0} – ${match.awayScore ?? 0}`
+          )
+        ) : (
+          "VS"
+        )}
       </Typography>
       <Typography
         variant="caption"

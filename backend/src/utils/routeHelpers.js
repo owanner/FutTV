@@ -28,6 +28,8 @@ const MATCH_SELECT = {
   status: true,
   homeScore: true,
   awayScore: true,
+  homePenaltyScore: true,
+  awayPenaltyScore: true,
   manuallyAdjusted: true,
   broadcasts: { select: { id: true, name: true, logo: true, url: true, language: true } }
 };

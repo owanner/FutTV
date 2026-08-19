@@ -30,6 +30,8 @@ model Match {
   status          Int
   homeScore       Int?
   awayScore       Int?
+  homePenaltyScore Int?
+  awayPenaltyScore Int?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @default(now()) @updatedAt
   manuallyAdjusted Boolean  @default(false)

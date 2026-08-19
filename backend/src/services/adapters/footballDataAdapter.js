@@ -61,6 +61,12 @@ class FootballDataAdapter {
       const group = match.group?.name || null;
       const date = new Date(match.utcDate);
 
+      const hasPenalties = match.score?.penalties?.home != null && match.score?.penalties?.away != null;
+      const homeScore = hasPenalties ? (match.score?.regularTime?.home ?? (match.score?.fullTime?.home - match.score.penalties.home)) : (match.score?.fullTime?.home ?? null);
+      const awayScore = hasPenalties ? (match.score?.regularTime?.away ?? (match.score?.fullTime?.away - match.score.penalties.away)) : (match.score?.fullTime?.away ?? null);
+      const homePenaltyScore = hasPenalties ? match.score.penalties.home : null;
+      const awayPenaltyScore = hasPenalties ? match.score.penalties.away : null;
+
       return {
         id: `fb_${match.id}`,
         competitionId: this.comp.id,
@@ -82,8 +88,10 @@ class FootballDataAdapter {
         referee: match.referees?.[0]?.name || null,
         attendance: match.attendance?.toString() || null,
         status: mapFbStatus(match.status, date),
-        homeScore: match.score?.fullTime?.home ?? null,
-        awayScore: match.score?.fullTime?.away ?? null
+        homeScore,
+        awayScore,
+        homePenaltyScore,
+        awayPenaltyScore
       };
     });
   }

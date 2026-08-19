@@ -125,22 +125,21 @@ function buildMatchData(match, compId, seasonId) {
   const awayGoals = parseInt(match.visitante?.gols);
   const homePens = parseInt(match.mandante?.panaltis);
   const awayPens = parseInt(match.visitante?.panaltis);
+  const hasPens = !isNaN(homePens) && !isNaN(awayPens) && (homePens > 0 || awayPens > 0);
 
-  // For knockout finals, the official score includes penalties.
-  // We store the regular-time score in homeScore/awayScore, and the
-  // penalty shoot-out score in the `panaltis`-prefixed fields below via
-  // stadium note (kept simple — future schema add could store pens).
   let homeScore = (isFinished || isLive) ? (isNaN(homeGoals) ? 0 : homeGoals) : null;
   let awayScore = (isFinished || isLive) ? (isNaN(awayGoals) ? 0 : awayGoals) : null;
+  const homePenaltyScore = hasPens ? homePens : null;
+  const awayPenaltyScore = hasPens ? awayPens : null;
 
   const stageName = match.campeonato?.nome_categoria
     || inferCbrStage(match.rodada, compId, status, match.num_jogo)
     || null;
 
   // For Copa do Brasil knockouts, embed the penalty result in the stadium
-  // string when there was a shoot-out, so the UI can show it.
+  // string when there was a shoot-out, so the UI can show it (or use homePenaltyScore/awayPenaltyScore).
   let stadium = match.local || null;
-  if (isFinished && !isNaN(homePens) && !isNaN(awayPens) && (homePens > 0 || awayPens > 0) && homeScore === awayScore) {
+  if (isFinished && hasPens && homeScore === awayScore) {
     stadium = `${stadium || ""} (pênaltis ${homePens} x ${awayPens})`.trim();
   }
 
@@ -165,7 +164,9 @@ function buildMatchData(match, compId, seasonId) {
     attendance: null,
     status,
     homeScore,
-    awayScore
+    awayScore,
+    homePenaltyScore,
+    awayPenaltyScore
   };
 }
 

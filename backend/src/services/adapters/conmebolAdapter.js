@@ -18,20 +18,24 @@ class ConmebolAdapter {
     const start = fixtureIdRange?.start ?? 680;
     const end = fixtureIdRange?.end ?? 1800;
 
-    // If no match is currently LIVE, skip heavy CONMEBOL scraping to keep the system lightning fast (0ms)
-    const liveCount = await prisma.match.count({
-      where: { competitionId: this.comp.id, status: 3 }
-    });
-    if (liveCount === 0) {
-      return [];
-    }
-
-    const activeMatches = await prisma.match.findMany({
-      where: { competitionId: this.comp.id, status: 3 },
+    const now = new Date();
+    const targetMatches = await prisma.match.findMany({
+      where: {
+        competitionId: this.comp.id,
+        OR: [
+          { status: 3 },
+          { status: 1, date: { lte: new Date(now.getTime() + 24 * 60 * 60 * 1000), gte: new Date(now.getTime() - 12 * 60 * 60 * 1000) } },
+          { status: 0, OR: [{ homeScore: null }, { awayScore: null }] }
+        ]
+      },
       select: { id: true }
     });
 
-    const knownIds = activeMatches
+    if (targetMatches.length === 0) {
+      return [];
+    }
+
+    const knownIds = targetMatches
       .map(m => parseInt(m.id.replace(`conmebol_${conmebolSlug}_`, ""), 10))
       .filter(n => !isNaN(n));
 

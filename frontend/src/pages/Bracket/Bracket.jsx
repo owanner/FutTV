@@ -17,7 +17,7 @@ import {
 import { useNav } from "../../hooks/useNav";
 import { PageLoader, PageError } from "../../components/PageLoader/PageLoader";
 
-function TeamSide({ team, code, flag, score, winner, competitionId }) {
+function TeamSide({ team, code, flag, score, penaltyScore, isHome, winner, competitionId }) {
   const isPlaceholder = !team || team.trim().toLowerCase() === "unknown" || team.trim().toLowerCase() === "a definir";
   const displayName = isPlaceholder ? "A definir" : normalizeTeamName(team) || abbreviateTeamName(code) || "A definir";
 
@@ -65,8 +65,26 @@ function TeamSide({ team, code, flag, score, winner, competitionId }) {
         {displayName}
       </Typography>
       {score != null && (
-        <Typography variant="body2" sx={{ fontWeight: 800, flexShrink: 0 }}>
-          {score}
+        <Typography variant="body2" sx={{ fontWeight: 800, flexShrink: 0, display: "flex", alignItems: "center", gap: 0.5 }}>
+          {isHome ? (
+            <>
+              {score}
+              {penaltyScore != null && (
+                <Box component="span" sx={{ fontSize: "0.75em", fontWeight: 700, color: "text.secondary" }}>
+                  ({penaltyScore})
+                </Box>
+              )}
+            </>
+          ) : (
+            <>
+              {penaltyScore != null && (
+                <Box component="span" sx={{ fontSize: "0.75em", fontWeight: 700, color: "text.secondary" }}>
+                  ({penaltyScore})
+                </Box>
+              )}
+              {score}
+            </>
+          )}
         </Typography>
       )}
     </Stack>
@@ -78,9 +96,12 @@ function BracketMatchCard({ match, navigate, isThirdPlace, competitionId }) {
   const showScore = match.status === 0 || match.status === 3;
   const homeScore = showScore ? match.homeScore ?? 0 : null;
   const awayScore = showScore ? match.awayScore ?? 0 : null;
+  const homePenScore = showScore ? match.homePenaltyScore ?? null : null;
+  const awayPenScore = showScore ? match.awayPenaltyScore ?? null : null;
+  const hasPens = homePenScore != null && awayPenScore != null;
   const decided = match.status === 0 && (homeScore !== null && awayScore !== null);
-  const homeWins = decided && homeScore > awayScore;
-  const awayWins = decided && awayScore > homeScore;
+  const homeWins = decided && (hasPens ? homePenScore > awayPenScore : homeScore > awayScore);
+  const awayWins = decided && (hasPens ? awayPenScore > homePenScore : awayScore > homeScore);
 
   return (
     <Card
@@ -107,8 +128,8 @@ function BracketMatchCard({ match, navigate, isThirdPlace, competitionId }) {
             />
           </Stack>
           <Stack spacing={0.5}>
-            <TeamSide team={match.homeTeam} code={match.homeCode} flag={match.homeFlag} score={homeScore} winner={decided ? homeWins : null} competitionId={competitionId} />
-            <TeamSide team={match.awayTeam} code={match.awayCode} flag={match.awayFlag} score={awayScore} winner={decided ? awayWins : null} competitionId={competitionId} />
+            <TeamSide team={match.homeTeam} code={match.homeCode} flag={match.homeFlag} score={homeScore} penaltyScore={homePenScore} isHome={true} winner={decided ? homeWins : null} competitionId={competitionId} />
+            <TeamSide team={match.awayTeam} code={match.awayCode} flag={match.awayFlag} score={awayScore} penaltyScore={awayPenScore} isHome={false} winner={decided ? awayWins : null} competitionId={competitionId} />
           </Stack>
         </Stack>
       </CardContent>
