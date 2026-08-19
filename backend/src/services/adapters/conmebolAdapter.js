@@ -24,7 +24,7 @@ class ConmebolAdapter {
         competitionId: this.comp.id,
         OR: [
           { status: 3 },
-          { status: 1, date: { lte: new Date(now.getTime() + 24 * 60 * 60 * 1000), gte: new Date(now.getTime() - 12 * 60 * 60 * 1000) } },
+          { status: 1, date: { lte: new Date(now.getTime() + 24 * 60 * 60 * 1000) } },
           { status: 0, OR: [{ homeScore: null }, { awayScore: null }] }
         ]
       },

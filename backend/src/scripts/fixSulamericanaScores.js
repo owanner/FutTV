@@ -12,16 +12,17 @@ async function fixSulamericanaScores() {
   const matches = await prisma.match.findMany({
     where: {
       competitionId: "sulamericana2026",
-      status: 0, // FINISHED
+      date: { lt: new Date() },
       OR: [
         { homeScore: null },
-        { awayScore: null }
+        { awayScore: null },
+        { status: 1 }
       ]
     },
-    select: { id: true, homeTeam: true, awayTeam: true, homeScore: true, awayScore: true }
+    select: { id: true, homeTeam: true, awayTeam: true, homeScore: true, awayScore: true, date: true }
   });
 
-  console.log(`Found ${matches.length} finished Sulamericana matches with missing scores`);
+  console.log(`Found ${matches.length} past Sulamericana matches to fix/update`);
 
   let updated = 0;
   for (const m of matches) {
@@ -36,23 +37,20 @@ async function fixSulamericanaScores() {
         continue;
       }
 
-      if (fixture.homeScore == null || fixture.awayScore == null) {
-        console.log(`  ⚠ No score on page for ${m.homeTeam} vs ${m.awayTeam}`);
-        continue;
-      }
-
-      if (m.homeScore === fixture.homeScore && m.awayScore === fixture.awayScore) {
-        continue; // Already correct
-      }
+      const now = new Date();
+      const twoHours = 2 * 60 * 60 * 1000;
+      const isFinished = fixture.fixtureDate ? fixture.fixtureDate.getTime() + twoHours < now.getTime() : true;
+      const status = isFinished ? 0 : 3;
 
       await prisma.match.update({
         where: { id: m.id },
         data: {
           homeScore: fixture.homeScore,
-          awayScore: fixture.awayScore
+          awayScore: fixture.awayScore,
+          status
         }
       });
-      console.log(`  ✅ ${m.homeTeam} vs ${m.awayTeam}: ${fixture.homeScore} x ${fixture.awayScore}`);
+      console.log(`  ✅ ${m.homeTeam} vs ${m.awayTeam}: ${fixture.homeScore ?? "?"} x ${fixture.awayScore ?? "?"} (status: ${status})`);
       updated++;
     } catch (e) {
       console.log(`  ❌ Error scraping ${m.homeTeam} vs ${m.awayTeam}: ${e.message}`);
